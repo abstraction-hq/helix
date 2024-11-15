@@ -1,0 +1,16 @@
+{
+  "name": "helix",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://imduchuyyy@github.com/abstraction-hq/helix",
+  "author": "imduchuyyy <duchuy.124dk@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "cz-conventional-changelog": "^3.3.0"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  }
+}
