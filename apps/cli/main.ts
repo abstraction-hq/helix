@@ -1,15 +1,11 @@
 #!/usr/bin/env node
-import { Command } from "commander";
-import { addWalletCommands } from "./cmd/wallet";
+import { Command } from 'commander';
+import cmds from './commands';
 
 const program = new Command();
 
-program
-  .name('helix')
-  .description('Most powerful cli wallet. Built by developers for developers')
-  .version('1.0.0');
-
-
-addWalletCommands(program);
+for (const cmd of cmds) {
+  cmd(program);
+}
 
 program.parse(process.argv);

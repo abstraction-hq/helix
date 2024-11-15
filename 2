@@ -1,0 +1,74 @@
+#!/usr/bin/env node
+import { Command } from "commander";
+
+const program = new Command();
+program
+  .command('send')
+  .description('Send cryptocurrency or tokens to another address')
+  .option('-a, --amount <amount>', 'Amount to send')
+  .option('-r, --recipient <recipient>', 'Recipient address')
+  .option('-t, --token <token>', 'Token contract address (optional for ETH)')
+  .action((options) => {
+    if (!options.amount || !options.recipient) {
+      console.error('Error: Amount and recipient are required.');
+      process.exit(1);
+    }
+    const tokenInfo = options.token
+      ? `Token contract: ${options.token}`
+      : 'Native cryptocurrency';
+    console.log(
+      `Sending ${options.amount} to ${options.recipient}. ${tokenInfo}`
+    );
+  });
+
+// Command: Get the active wallet address
+program
+  .command('get-address')
+  .description('Get the active wallet address')
+  .action(() => {
+    console.log('Your wallet address: 0x1234...');
+    // Add logic to fetch and display the wallet address
+  });
+
+// Command: Get all supported networks
+program
+  .command('get-networks')
+  .description('Get a list of all supported networks')
+  .action(() => {
+    console.log('Supported networks:');
+    console.log('- Mainnet (Active)');
+    console.log('- Ropsten');
+    console.log('- Rinkeby');
+    // Add logic to fetch and display networks
+  });
+
+// Command: Add a new network
+program
+  .command('add-network')
+  .description('Add a new network')
+  .option('-n, --name <name>', 'Network name')
+  .option('-u, --url <url>', 'RPC URL for the network')
+  .action((options) => {
+    if (!options.name || !options.url) {
+      console.error('Error: Network name and RPC URL are required.');
+      process.exit(1);
+    }
+    console.log(`Added network: ${options.name} with URL: ${options.url}`);
+    // Add logic to save the network
+  });
+
+// Command: Switch active network
+program
+  .command('switch-network')
+  .description('Switch to a different active network')
+  .option('-n, --name <name>', 'Network name to switch to')
+  .action((options) => {
+    if (!options.name) {
+      console.error('Error: Network name is required.');
+      process.exit(1);
+    }
+    console.log(`Switched to network: ${options.name}`);
+    // Add logic to switch the network
+  });
+
+program.parse(process.argv);
