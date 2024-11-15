@@ -1,16 +1,19 @@
 {
   "name": "helix",
-  "version": "1.0.0",
-  "main": "index.js",
-  "repository": "https://imduchuyyy@github.com/abstraction-hq/helix",
-  "author": "imduchuyyy <duchuy.124dk@gmail.com>",
-  "license": "MIT",
-  "devDependencies": {
-    "cz-conventional-changelog": "^3.3.0"
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
-  "config": {
-    "commitizen": {
-      "path": "./node_modules/cz-conventional-changelog"
-    }
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "turbo": "^2.3.0",
+    "typescript": "5.5.4"
+  },
+  "packageManager": "pnpm@8.15.6",
+  "engines": {
+    "node": ">=18"
   }
 }
