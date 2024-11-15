@@ -1,5 +1,5 @@
 # Helix CLI - Built by developers for developers
-For your everyday terminal.
+Crypto wallet for your everyday terminal.
 
 ## Installation
 ```bash
