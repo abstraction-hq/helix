@@ -21,7 +21,8 @@
     "helix": "./dist/main.js"
   },
   "dependencies": {
-    "@helix/engine": "^1.0.0",
+    "@helix/keyring": "*",
+    "@helix/format": "*",
     "commander": "^12.1.0"
   }
 }

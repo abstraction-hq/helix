@@ -1,0 +1,25 @@
+{
+  "name": "@helix/keyring",
+  "version": "1.0.0",
+  "private": true,
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@repo/typescript-config": "*",
+    "@types/bip39": "^2.4.2"
+  },
+  "dependencies": {
+    "@helix/storage": "*",
+    "@helix/crypto": "*",
+    "bip39": "^3.1.0"
+  }
+}
