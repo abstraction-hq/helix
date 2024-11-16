@@ -14,34 +14,22 @@ export class KeyringEngine {
     this.#crypto = new CryptoEngine();
   }
 
-  testEncryptDecrypt(): void {
-    const newSeeds = this.generateNewSeeds();
-    console.log("New seeds: ", newSeeds);
-    const entropy = mnemonicToEntropy(newSeeds);
-    console.log("Entropy: ", entropy);
-    const password = "password";
-
-    const encrypted = this.#crypto.encryptAesGcm(entropy, password) as string;
-    console.log("Encrypted: ", encrypted);
-    const decrypted = this.#crypto.decryptAesGcm(encrypted, password) as string;
-    console.log("Decrypted: ", decrypted);
-
-    const mnemonic = entropyToMnemonic(decrypted);
-
-    console.log("Decrypted mnemonic: ", mnemonic);
-  }
-
   generateNewSeeds(): string {
     return generateMnemonic();
   }
 
   isExitSeed(): boolean {
-    return this.#config.seed !== undefined;
+    return this.#config.encryptedSeed !== undefined;
   }
 
   async persistSeed(seeds: string, password: string): Promise<void> {
     const entropy = mnemonicToEntropy(seeds);
-    this.#config["seed"] = seeds;
+    const encrypted = this.#crypto.encryptAesGcm(entropy, password) as string;
+    this.#config["encryptedSeed"] = encrypted;
+
+
+    this.#storage.setConfig(this.#config);
+    await this.#storage.save();
   }
 
   async isUnlock(): Promise<boolean> {

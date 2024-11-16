@@ -45,14 +45,13 @@ class HelixTerminal {
     return true;
   }
 
-  #asyncPrompt(question: string, hideInput = false): Promise<string> {
+  #asyncPrompt(question: string): Promise<string> {
     return new Promise(async (resolve) => {
       this.#rl.question(question, (answer) => resolve(answer.trim()));
     });
   }
 
   start() {
-    this.#keyring.testEncryptDecrypt();
     console.log(
       this.#format.format(
         "Welcome to Helix Crypto Wallet Terminal.",
@@ -124,11 +123,10 @@ class HelixTerminal {
     console.log("\nType 'help <command>' for more details about a command.");
   }
 
-  async #createWallet(args: string[]) {
+  async #createWallet() {
     console.log("Creating a new wallet...");
     const password = await this.#asyncPrompt(
       "Create a password for your wallet: ",
-      true,
     );
     const confirmPassword = await this.#asyncPrompt("Confirm your password: ");
 
@@ -150,13 +148,13 @@ class HelixTerminal {
 
     while (isSaveAnswer !== "yes") {
       isSaveAnswer = await this.#asyncPrompt(
-        `Please save your seed and don't share it with anyone? (type ${this.#format.format("create", FormatType.SUCCESS, true)} to confirm): `,
+        `Please save your seed and don't share it with anyone? (type ${this.#format.format("yes", FormatType.SUCCESS, true)} to confirm): `,
       );
     }
 
-    this.#keyring.persistSeed(seed, password);
+    await this.#keyring.persistSeed(seed, password);
 
-    console.log("New wallet created!");
+    console.log(this.#format.format("New wallet created!", FormatType.SUCCESS, true));
   }
 
   #getBalance(args: string[]) {
