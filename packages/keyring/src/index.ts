@@ -1,34 +1,43 @@
 #!/usr/bin/env node
-import { generateMnemonic, mnemonicToEntropy, entropyToMnemonic } from 'bip39';
-import { StorageEngine, StorageConfig } from "@helix/storage"
+import { english, generateMnemonic, mnemonicToAccount } from 'viem/accounts';
+import { StorageEngine, Data } from "@helix/storage"
 import { CryptoEngine } from "@helix/crypto"
+import { mnemonicToEntropy } from 'bip39';
+import { hashMessage, keccak256 } from 'viem';
 
 export class KeyringEngine {
   #storage: StorageEngine;
-  #config: StorageConfig;
   #crypto: CryptoEngine;
 
   constructor(storage: StorageEngine = new StorageEngine()) {
     this.#storage = storage;
-    this.#config = this.#storage.getConfig();
     this.#crypto = new CryptoEngine();
   }
 
   generateNewSeeds(): string {
-    return generateMnemonic();
+    return generateMnemonic(english);
   }
 
   isExitSeed(): boolean {
-    return this.#config.encryptedSeed !== undefined;
+    const data = this.#storage.getData();
+    return data.encryptedSeed !== undefined;
   }
 
-  async persistSeed(seeds: string, password: string): Promise<void> {
-    const entropy = mnemonicToEntropy(seeds);
-    const encrypted = this.#crypto.encryptAesGcm(entropy, password) as string;
-    this.#config["encryptedSeed"] = encrypted;
+  async persistSeed(mnemonic: string, password: string): Promise<void> {
+    const account = mnemonicToAccount(mnemonic);
+    const encrypted = this.#crypto.encryptAesGcm(mnemonicToEntropy(mnemonic), password) as string;
+    const data = this.#storage.getData();
+    data["passwordHash"] = hashMessage(password);
+    data["encryptedSeed"] = encrypted;
+    // TODO: prepare for multichain
+    data["addresses"] = {
+      "evm": [account.address]
+    };
+    data["defaultAddress"] = {
+      "evm": account.address
+    };
 
-
-    this.#storage.setConfig(this.#config);
+    this.#storage.setData(data);
     await this.#storage.save();
   }
 

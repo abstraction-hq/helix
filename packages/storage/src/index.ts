@@ -2,52 +2,52 @@
 import fs from 'fs';
 import path from 'path';
 
-export const DEFAULT_CONFIG_PATH = path.resolve(process.env.HOME || "", ".helix-wallet/storage.json");
+export const DEFAULT_DATA_PATH = path.resolve(process.env.HOME || "", ".helix-wallet/storage.json");
 
-export type StorageConfig = {
+export type Data = {
   [key: string]: any; // Allow arbitrary key-value pairs
 };
 
 export class StorageEngine {
-  #configPath: string;
-  #config: StorageConfig;
+  #dataPath: string;
+  #data: Data;
 
-  constructor(configPath?: string) {
-    this.#configPath = configPath || DEFAULT_CONFIG_PATH;
-    this.#config = this.load();
+  constructor(dataPath?: string) {
+    this.#dataPath = dataPath || DEFAULT_DATA_PATH;
+    this.#data = this.load();
   }
 
-  load(): StorageConfig {
+  load(): Data {
     try {
-      if (fs.existsSync(this.#configPath)) {
-        const configData = fs.readFileSync(this.#configPath, 'utf8');
-        this.#config = JSON.parse(configData);
+      if (fs.existsSync(this.#dataPath)) {
+        const dataData = fs.readFileSync(this.#dataPath, 'utf8');
+        this.#data = JSON.parse(dataData);
       } else {
-        this.#config = {};
+        this.#data = {};
       }
     } catch (error) {
-      console.error(`Failed to load config from ${this.#configPath}:`, error);
+      console.error(`Failed to load data from ${this.#dataPath}:`, error);
     }
-    return this.#config;
+    return this.#data;
   }
 
-  getConfig(): StorageConfig {
-    return this.#config;
+  getData(): Data {
+    return this.#data;
   }
 
-  setConfig(newConfig: StorageConfig): void {
-    this.#config = { ...this.#config, ...newConfig };
+  setData(newdata: Data): void {
+    this.#data = { ...this.#data, ...newdata };
   }
 
   async save(): Promise<void> {
     try {
-      const configDir = path.dirname(this.#configPath);
-      if (!fs.existsSync(configDir)) {
-        fs.mkdirSync(configDir, { recursive: true });
+      const dataDir = path.dirname(this.#dataPath);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
       }
-      fs.writeFileSync(this.#configPath, JSON.stringify(this.#config, null, 2), 'utf8');
+      fs.writeFileSync(this.#dataPath, JSON.stringify(this.#data, null, 2), 'utf8');
     } catch (error) {
-      console.error(`Failed to save config to ${this.#configPath}:`, error);
+      console.error(`Failed to save data to ${this.#dataPath}:`, error);
     }
   }
 }

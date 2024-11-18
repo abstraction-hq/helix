@@ -18,8 +18,9 @@
     "@types/bip39": "^2.4.2"
   },
   "dependencies": {
-    "@helix/storage": "*",
     "@helix/crypto": "*",
-    "bip39": "^3.1.0"
+    "@helix/storage": "*",
+    "bip39": "^3.1.0",
+    "viem": "^2.21.47"
   }
 }
