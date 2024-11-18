@@ -1,54 +1,94 @@
 #!/usr/bin/env node
-import readline from "readline";
-import { KeyringEngine } from "@helix/keyring";
 import { FormatEngine, FormatType } from "@helix/format";
+import { input } from "@inquirer/prompts";
 
-type CommandHandler = (args: string[]) => void;
+type CommandHandler = (args: string[]) => Promise<void>;
 
 interface Command {
   handler: CommandHandler;
   description: string;
 }
 
-class HelixTerminal {
-  #rl: readline.Interface;
+class HelixCLI {
+  #namespaces: string[] = [];
   #commands: Map<string, Command>;
-
   // engines
-  #keyring: KeyringEngine;
   #format: FormatEngine;
 
   constructor() {
-    this.#rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-      prompt: "Helix > ",
-    });
-
-    this.#commands = new Map<string, Command>();
-
-    // Initialize engines
-    this.#keyring = new KeyringEngine();
     this.#format = new FormatEngine();
 
-    // Register commands
-    this.#registerCommands();
+    this.#commands = new Map<string, Command>();
+    // register command
+    //
+    this.#registerCommand("help", this.handleHelp.bind(this), "Print all available commands");
+    this.#registerCommand("create", this.handleCreateWallet.bind(this), "Create a new wallet");
+    this.#registerCommand("address", this.handleGetDefaultAddress.bind(this), "Get default address");
   }
 
-  #precheckWalletExited(): boolean {
-    if (!this.#keyring.isExitSeed()) {
-      console.log(
-        `No seed found. Type '${this.#format.format("create", FormatType.SUCCESS, true)}' to create new seed or '${this.#format.format("import", FormatType.SUCCESS, true)}' to import exited seed.`,
-      );
-      return false;
+  #registerCommand(name: string, handler: CommandHandler, description: string) {
+    this.#commands.set(name, { handler, description });
+  }
+
+  #formatPrefix() {
+    let prefix =
+      this.#format.format("# Helix wallet ", FormatType.SUCCESS, true) + " >";
+    for (const namespace of this.#namespaces) {
+      prefix +=
+        " " + this.#format.format(namespace, FormatType.INFO, true) + " >";
     }
-    return true;
+    return prefix;
   }
 
-  #asyncPrompt(question: string): Promise<string> {
-    return new Promise(async (resolve) => {
-      this.#rl.question(question, (answer) => resolve(answer.trim()));
-    });
+  #styleAnswer(text: string) {
+    const commandSplit = text.split(" ");
+    const cmd = this.#commands.get(commandSplit[0] as string);
+    if (!cmd) {
+      return this.#format.format(text, FormatType.ERROR, false);
+    } else {
+      return this.#format.format(text, FormatType.SUCCESS, false);
+    }
+  }
+
+  async #handleAnswer(command: string) {
+    if (command.length == 0) {
+      return;
+    }
+    const commandSplit = command.split(" ");
+    const cmd = this.#commands.get(commandSplit[0] as string);
+
+    if (cmd) {
+      await cmd.handler(commandSplit);
+    } else {
+      console.error(
+        `Unknown command: '${this.#format.format(command, FormatType.ERROR, true)}'. Type '${this.#format.format("help", FormatType.DEFAULT, true)}' for a list of commands.`,
+      );
+    }
+  }
+
+  #handleExit() {
+    console.log("Exit the Helix CLI.");
+  }
+
+  async #loop() {
+    while (true) {
+      try {
+        const answer = await input({
+          message: "",
+          theme: {
+            prefix: this.#formatPrefix(),
+            style: {
+              answer: (text: string) => this.#styleAnswer(text),
+            },
+          },
+        });
+
+        await this.#handleAnswer(answer);
+      } catch (err) {
+        this.#handleExit();
+        break;
+      }
+    }
   }
 
   start() {
@@ -65,57 +105,10 @@ class HelixTerminal {
         FormatType.INFO,
       ),
     );
-    this.#precheckWalletExited();
-    this.#rl.prompt();
-
-    this.#rl.on("line", (line: string) => {
-      const [command, ...args] = line.trim().split(/\s+/);
-
-      if (!command) {
-        console.log(`No command entered. Type '${this.#format.format("help", FormatType.DEFAULT, true)}' for a list of commands.`);
-        this.#rl.prompt();
-        return;
-      }
-
-      const cmd = this.#commands.get(command);
-      if (cmd) {
-        cmd.handler.call(this, args);
-      } else {
-        console.error(
-          `Unknown command: '${this.#format.format(command, FormatType.DEFAULT, true)}'. Type '${this.#format.format("help", FormatType.DEFAULT, true)}' for a list of commands.`,
-        );
-      }
-      this.#rl.prompt();
-    });
-
-    this.#rl.on("close", () => {
-      console.log("Exiting Helix terminal. Goodbye!");
-      process.exit(0);
-    });
+    this.#loop();
   }
 
-  #registerCommands() {
-    this.#registerCommand("help", this.#displayHelp, "Show this help message.");
-    this.#registerCommand(
-      "balance",
-      this.#getBalance,
-      "Check the balance of your wallet.",
-    );
-    this.#registerCommand(
-      "send",
-      this.#sendCrypto,
-      "Send cryptocurrency to an address.",
-    );
-    this.#registerCommand("create", this.#createWallet, "Create new wallet.");
-    this.#registerCommand("exit", this.#exit, "Exit the Helix terminal.");
-    // Add more commands here
-  }
-
-  #registerCommand(name: string, handler: CommandHandler, description: string) {
-    this.#commands.set(name, { handler, description });
-  }
-
-  #displayHelp(args: string[]) {
+  async handleHelp(args: string[]) {
     console.log("\nAvailable commands:");
     this.#commands.forEach((command, name) => {
       console.log(`  ${name.padEnd(20)} ${command.description}`);
@@ -123,60 +116,15 @@ class HelixTerminal {
     console.log("\nType 'help <command>' for more details about a command.");
   }
 
-  async #createWallet() {
-    console.log("Creating a new wallet...");
-    const password = await this.#asyncPrompt(
-      "Create a password for your wallet: ",
-    );
-    const confirmPassword = await this.#asyncPrompt("Confirm your password: ");
-
-    if (password !== confirmPassword) {
-      console.log(
-        this.#format.format(
-          "Passwords do not match. Wallet creation aborted.",
-          FormatType.ERROR,
-        ),
-      );
-      return;
-    }
-
-    const seed = this.#keyring.generateNewSeeds();
-    console.log("New Seed Generated");
-    console.log(this.#format.format(`     ${seed}`, FormatType.INFO, true));
-
-    let isSaveAnswer = "";
-
-    while (isSaveAnswer !== "yes") {
-      isSaveAnswer = await this.#asyncPrompt(
-        `Please save your seed and don't share it with anyone? (type ${this.#format.format("yes", FormatType.SUCCESS, true)} to confirm): `,
-      );
-    }
-
-    await this.#keyring.persistSeed(seed, password);
-
-    console.log(this.#format.format("New wallet created!", FormatType.SUCCESS, true));
+  async handleCreateWallet(args: string[]) {
+    console.log("Create wallet");
   }
 
-  #getBalance(args: string[]) {
-    // Replace with actual wallet balance logic
-    console.log("Fetching balance... (example: 2.34 ETH)");
-  }
-
-  #sendCrypto(args: string[]) {
-    if (args.length !== 2) {
-      console.log("Usage: send <amount> <to>");
-      return;
-    }
-
-    const [amount, address] = args;
-    console.log(`Sending ${amount} to ${address}...`);
-  }
-
-  #exit(args: string[]) {
-    this.#rl.close();
+  async handleGetDefaultAddress(args: string[]) {
+    console.log("Get address");
   }
 }
 
-// Start the terminal
-const terminal = new HelixTerminal();
-terminal.start();
+const cli = new HelixCLI();
+
+cli.start();
