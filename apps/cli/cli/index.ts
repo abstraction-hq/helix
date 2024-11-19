@@ -56,6 +56,11 @@ export class HelixCLI {
       "Add address",
     );
     this.#registerCommand(
+      "clear",
+      this.handleClearTerminal.bind(this),
+      "Clear terminal",
+    );
+    this.#registerCommand(
       "send",
       this.handleSend.bind(this),
       "Send transaction",
@@ -362,6 +367,10 @@ export class HelixCLI {
       ),
       "for full list.\n",
     );
+  }
+
+  async handleClearTerminal(_: { [key: string]: string }) {
+    console.clear();
   }
 
   async handleGetDefaultNetwork(args: { [key: string]: string }) {
