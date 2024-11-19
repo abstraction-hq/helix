@@ -13,7 +13,11 @@ export enum FormatType {
 export class FormatEngine {
   constructor() {}
 
-  format(message: string, formatType: FormatType = FormatType.DEFAULT, bold: boolean = false): string {
+  format(
+    message: string,
+    formatType: FormatType = FormatType.DEFAULT,
+    bold: boolean = false,
+  ): string {
     let styledMessage: string;
 
     switch (formatType) {

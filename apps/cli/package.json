@@ -23,6 +23,9 @@
   "dependencies": {
     "@helix/format": "*",
     "@helix/keyring": "*",
+    "@helix/storage": "*",
+    "@helix/crypto": "*",
+    "@helix/network": "*",
     "commander": "^12.1.0",
     "inquirer": "^12.1.0"
   }
