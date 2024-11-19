@@ -386,7 +386,7 @@ export class HelixCLI {
   }
 
   async handleSend(args: { [key: string]: string }) {
-    this.#namespaces.push("send (type 'exit' on any prompt to exit)");
+    this.#namespaces.push("Send");
     if (!this.#keyring.isExitSeed()) {
       console.log(
         this.#format.format(
@@ -406,7 +406,7 @@ export class HelixCLI {
           validate: (value) =>
             this.#network.isSupportedNetwork(value) || value === "exit"
               ? true
-              : `Network not supported, see ${this.#format.format("networks", FormatType.INFO, true)} for full list`,
+              : `Network '${value}' is not supported, see ${this.#format.format("networks", FormatType.INFO, true)} for full list`,
           theme: {
             prefix: this.#formatPrefix(),
           },
