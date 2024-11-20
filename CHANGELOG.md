@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/helix-cli/helix/compare/v1.0.0...v1.1.0) (2024-11-20)
+
+
+### Features
+
+* add publish ([92b538b](https://github.com/helix-cli/helix/commit/92b538b9e38c6ea6534cb980d247013e0a2703fd))
+
 # 1.0.0 (2024-11-20)
 
 
