@@ -1,8 +1,0 @@
-{
-  "extends": "@repo/typescript-config/base.json",
-  "compilerOptions": {
-    "skipLibCheck": true /* Skip type checking all .d.ts files. */,
-    "outDir": "./dist",
-    "baseUrl": "./"
-  }
-}

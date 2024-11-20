@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-import { FormatEngine } from "@helix/format";
-import { StorageEngine } from "@helix/storage";
-import { KeyringEngine } from "@helix/keyring";
-import { CryptoEngine } from "@helix/crypto";
-import { NetworkEngine } from "@helix/network";
+import 'module-alias/register';
 
-import { HelixCLI } from "./cli";
+import { FormatEngine } from "@format/index";
+import { StorageEngine } from "@storage/index";
+import { KeyringEngine } from "@keyring/index";
+import { CryptoEngine } from "@crypto/index";
+import { NetworkEngine } from "@network/index";
+
+import { HelixCLI } from "@cli/index";
 
 async function main() {
   // init engines

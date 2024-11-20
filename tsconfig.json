@@ -12,8 +12,18 @@
     "moduleResolution": "NodeNext",
     "noUncheckedIndexedAccess": true,
     "resolveJsonModule": true,
-    "skipLibCheck": true,
     "strict": true,
-    "target": "ES2022"
+    "target": "ES2022",
+    "skipLibCheck": true /* Skip type checking all .d.ts files. */,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "paths": {
+      "@crypto/*": ["./crypto/*"],
+      "@keyring/*": ["./keyring/*"],
+      "@network/*": ["./network/*"],
+      "@format/*": ["./format/*"],
+      "@storage/*": ["./storage/*"],
+      "@cli/*": ["./cli/*"],
+    }
   }
 }

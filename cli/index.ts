@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { FormatEngine, FormatType } from "@helix/format";
-import { StorageEngine } from "@helix/storage";
-import { KeyringEngine } from "@helix/keyring";
-import { NetworkEngine } from "@helix/network";
+import { FormatEngine, FormatType } from "@format/index";
+import { StorageEngine } from "@storage/index";
+import { KeyringEngine } from "@keyring/index";
+import { NetworkEngine } from "@network/index";
 import { input, password, rawlist } from "@inquirer/prompts";
 
 type CommandHandler = (args: { [key: string]: string }) => Promise<void>;
