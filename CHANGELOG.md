@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/helix-cli/helix/compare/v1.2.0...v1.3.0) (2024-11-20)
+
+
+### Features
+
+* release dist file ([bab37b5](https://github.com/helix-cli/helix/commit/bab37b5ec752a75a36a4697a96d2934ac3c8da67))
+
 # [1.2.0](https://github.com/helix-cli/helix/compare/v1.1.1...v1.2.0) (2024-11-20)
 
 
