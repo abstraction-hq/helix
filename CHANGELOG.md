@@ -1,3 +1,11 @@
+# [1.2.0](https://github.com/helix-cli/helix/compare/v1.1.1...v1.2.0) (2024-11-20)
+
+
+### Features
+
+* add npm token ([66de615](https://github.com/helix-cli/helix/commit/66de615dd327114b9fa6e675e18d06c5eb9c323a))
+* release with version ([703210f](https://github.com/helix-cli/helix/commit/703210f8ff115c4016a79518cebf90b07ae7c62a))
+
 ## [1.1.1](https://github.com/helix-cli/helix/compare/v1.1.0...v1.1.1) (2024-11-20)
 
 
