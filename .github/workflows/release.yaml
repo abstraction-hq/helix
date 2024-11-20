@@ -18,3 +18,4 @@ jobs:
         uses: cycjimmy/semantic-release-action@v4
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
