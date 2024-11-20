@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/helix-cli/helix/compare/v1.1.0...v1.1.1) (2024-11-20)
+
+
+### Bug Fixes
+
+* fix publish ([373129b](https://github.com/helix-cli/helix/commit/373129bd28f6a9a30a07227125e8c03ac8186f16))
+
 # [1.1.0](https://github.com/helix-cli/helix/compare/v1.0.0...v1.1.0) (2024-11-20)
 
 
