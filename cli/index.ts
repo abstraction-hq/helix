@@ -135,7 +135,7 @@ export class HelixCLI {
     if (cmd) {
       await cmd.handler(command);
     } else {
-      console.error(
+      console.log(
         `Unknown command: '${this.#format.format(answer, FormatType.ERROR, true)}'. Type '${this.#format.format("help", FormatType.DEFAULT, true)}' for a list of commands.`,
       );
     }
@@ -177,7 +177,7 @@ export class HelixCLI {
   }
 
   async handleHelp(args: { [key: string]: string }) {
-    console.log("\nAvailable commands:");
+    console.log("Available commands:");
     this.#commands.forEach((command, name) => {
       console.log(`  ${name.padEnd(20)} ${command.description}`);
     });
@@ -186,9 +186,7 @@ export class HelixCLI {
 
   async handleCreateWallet(_: { [key: string]: string }) {
     if (this.#keyring.isExitSeed()) {
-      console.log(
-        this.#format.format("\n     Wallet exited!\n", FormatType.INFO, true),
-      );
+      console.log(this.#format.format("Wallet exited!", FormatType.INFO, true));
 
       return;
     }
@@ -322,26 +320,21 @@ export class HelixCLI {
   async handleGetAllAddresses(_: { [key: string]: string }) {
     if (!this.#keyring.isExitSeed()) {
       console.log(
-        this.#format.format(
-          "\n     Wallet not found!\n",
-          FormatType.ERROR,
-          true,
-        ),
+        this.#format.format("\nWallet not found!\n", FormatType.ERROR, true),
       );
 
       return;
     }
 
     const data = this.#storage.getData();
-    console.log("\n     Addresses: ");
+    console.log("Addresses: ");
 
     data.addresses.evm.forEach((address: string, index: number) => {
       console.log(
-        "       (",
+        "(",
         index + 1,
         "):",
         this.#format.format(address, FormatType.SUCCESS, true),
-        index == data.addresses.evm.length - 1 ? "\n" : "",
       );
     });
   }
