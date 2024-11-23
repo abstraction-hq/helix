@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { english, generateMnemonic, mnemonicToAccount } from "viem/accounts";
-import { StorageEngine } from "@storage/index";
-import { CryptoEngine } from "@crypto/index";
+import { StorageEngine } from "../storage/index.js";
+import { CryptoEngine } from "../crypto/index.js";
 import { mnemonicToEntropy, entropyToMnemonic, validateMnemonic } from "bip39";
 import { hashMessage } from "viem";
 

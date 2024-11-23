@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { FormatEngine, FormatType } from "@format/index";
-import { StorageEngine } from "@storage/index";
-import { KeyringEngine } from "@keyring/index";
-import { NetworkEngine } from "@network/index";
+import { FormatEngine, FormatType } from "../format/index.js";
+import { StorageEngine } from "../storage/index.js";
+import { KeyringEngine } from "../keyring/index.js";
+import { NetworkEngine } from "../network/index.js";
 import { input, password, rawlist } from "@inquirer/prompts";
 
 type CommandHandler = (args: { [key: string]: string }) => Promise<void>;

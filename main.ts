@@ -1,13 +1,17 @@
 #!/usr/bin/env node
-import 'module-alias/register';
 
-import { FormatEngine } from "@format/index";
-import { StorageEngine } from "@storage/index";
-import { KeyringEngine } from "@keyring/index";
-import { CryptoEngine } from "@crypto/index";
-import { NetworkEngine } from "@network/index";
+import { FormatEngine } from "./format/index.js";
+import { StorageEngine } from "./storage/index.js";
+import { KeyringEngine } from "./keyring/index.js";
+import { CryptoEngine } from "./crypto/index.js";
+import { NetworkEngine } from "./network/index.js";
 
-import { HelixCLI } from "@cli/index";
+import { HelixCLI } from "./cli/index.js";
+
+import updateNotifier from 'update-notifier';
+import packageJson from './package.json' assert {type: 'json'};
+
+updateNotifier({pkg: packageJson}).notify();
 
 async function main() {
   // init engines
