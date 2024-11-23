@@ -1,0 +1,29 @@
+#!/usr/bin/env node
+
+import { FormatEngine } from "./format/index.js";
+import { StorageEngine } from "./storage/index.js";
+import { KeyringEngine } from "./keyring/index.js";
+import { CryptoEngine } from "./crypto/index.js";
+import { NetworkEngine } from "./network/index.js";
+
+import { HelixCLI } from "./cli/index.js";
+
+import updateNotifier from 'update-notifier';
+import packageJson from './package.json' assert {type: 'json'};
+
+updateNotifier({pkg: packageJson}).notify();
+
+async function main() {
+  // init engines
+  const storage = await StorageEngine.getInstance();
+  const crypto = new CryptoEngine();
+  const format = new FormatEngine();
+  const keyring = new KeyringEngine(storage, crypto);
+  const network = new NetworkEngine();
+
+  const cli = new HelixCLI(storage, format, keyring, network);
+
+  cli.start();
+}
+
+main();

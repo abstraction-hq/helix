@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { FormatEngine, FormatType } from "@format/index";
-import { StorageEngine } from "@storage/index";
-import { KeyringEngine } from "@keyring/index";
-import { NetworkEngine } from "@network/index";
+import { FormatEngine, FormatType } from "../format/index.js";
+import { StorageEngine } from "../storage/index.js";
+import { KeyringEngine } from "../keyring/index.js";
+import { NetworkEngine } from "../network/index.js";
 import { input, password, rawlist } from "@inquirer/prompts";
 
 type CommandHandler = (args: { [key: string]: string }) => Promise<void>;
@@ -44,6 +44,11 @@ export class HelixCLI {
       "create",
       this.handleCreateWallet.bind(this),
       "Create a new wallet",
+    );
+    this.#registerCommand(
+      "import",
+      this.handleImportWallet.bind(this),
+      "Import exited wallet",
     );
     this.#registerCommand(
       "address",
@@ -135,7 +140,7 @@ export class HelixCLI {
     if (cmd) {
       await cmd.handler(command);
     } else {
-      console.error(
+      console.log(
         `Unknown command: '${this.#format.format(answer, FormatType.ERROR, true)}'. Type '${this.#format.format("help", FormatType.DEFAULT, true)}' for a list of commands.`,
       );
     }
@@ -177,18 +182,73 @@ export class HelixCLI {
   }
 
   async handleHelp(args: { [key: string]: string }) {
-    console.log("\nAvailable commands:");
+    console.log("Available commands:");
     this.#commands.forEach((command, name) => {
       console.log(`  ${name.padEnd(20)} ${command.description}`);
     });
     console.log("\nType 'help <command>' for more details about a command.");
   }
 
+  async handleImportWallet(_: { [key: string]: string }) {
+    if (this.#keyring.isExitSeed()) {
+      console.log(this.#format.format("Wallet exited!", FormatType.INFO, true));
+
+      return;
+    }
+    this.#namespaces.push("Import Wallet");
+    const enterPassword = await password({
+      message: "Enter a password for your wallet:",
+      mask: "*",
+      validate: (value) => {
+        return value.length < 8
+          ? "Password must be at least 8 characters"
+          : true;
+      },
+      theme: {
+        prefix: this.#formatPrefix(),
+      },
+    });
+    await password({
+      message: "Confirm the password:",
+      mask: "*",
+      validate: (value) => {
+        return value !== enterPassword
+          ? "Password does not match. Please try again."
+          : true;
+      },
+      theme: {
+        prefix: this.#formatPrefix(),
+      },
+    });
+
+    const seed = await password({
+      message: `Input your seed phrase:`,
+      mask: "*",
+      validate: (value) => {
+        return this.#keyring.isValidMnemonic(value)
+          ? true
+          : "Invalid seed format";
+      },
+      theme: {
+        prefix: this.#formatPrefix(),
+      },
+    });
+
+    await this.#keyring.persistSeed(seed, enterPassword);
+
+    console.log(
+      this.#format.format(
+        "Import wallet successfully!",
+        FormatType.SUCCESS,
+        true,
+      ),
+    );
+    this.#namespaces.pop();
+  }
+
   async handleCreateWallet(_: { [key: string]: string }) {
     if (this.#keyring.isExitSeed()) {
-      console.log(
-        this.#format.format("\n     Wallet exited!\n", FormatType.INFO, true),
-      );
+      console.log(this.#format.format("Wallet exited!", FormatType.INFO, true));
 
       return;
     }
@@ -289,15 +349,12 @@ export class HelixCLI {
   async handleAddAddress(args: { [key: string]: string }) {
     if (!this.#keyring.isExitSeed()) {
       console.log(
-        this.#format.format(
-          "\n     Wallet not found!\n",
-          FormatType.ERROR,
-          true,
-        ),
+        this.#format.format("Wallet not found!", FormatType.ERROR, true),
       );
 
       return;
     }
+    this.#namespaces.push("Add Address");
     const enterPassword = await password({
       message: "Enter a password to unlock your wallet:",
       mask: "*",
@@ -313,35 +370,31 @@ export class HelixCLI {
 
     const newAddress = await this.#keyring.addAddress(enterPassword);
     console.log(
-      "\n     New address: ",
+      "New address: ",
       this.#format.format(newAddress, FormatType.SUCCESS, true),
-      "\n",
     );
+
+    this.#namespaces.pop();
   }
 
   async handleGetAllAddresses(_: { [key: string]: string }) {
     if (!this.#keyring.isExitSeed()) {
       console.log(
-        this.#format.format(
-          "\n     Wallet not found!\n",
-          FormatType.ERROR,
-          true,
-        ),
+        this.#format.format("\nWallet not found!\n", FormatType.ERROR, true),
       );
 
       return;
     }
 
     const data = this.#storage.getData();
-    console.log("\n     Addresses: ");
+    console.log("Addresses: ");
 
     data.addresses.evm.forEach((address: string, index: number) => {
       console.log(
-        "       (",
+        "(",
         index + 1,
         "):",
         this.#format.format(address, FormatType.SUCCESS, true),
-        index == data.addresses.evm.length - 1 ? "\n" : "",
       );
     });
   }
