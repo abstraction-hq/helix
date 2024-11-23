@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { FormatEngine, FormatType } from "../format/index.js";
-import { StorageEngine } from "../storage/index.js";
 import { KeyringEngine } from "../keyring/index.js";
-import { NetworkEngine } from "../network/index.js";
-import { input, password, rawlist } from "@inquirer/prompts";
+import { ChainEngine } from "../chain/index.js";
+import { input, password } from "@inquirer/prompts";
+import { formatUnits } from "viem";
 
 type CommandHandler = (args: { [key: string]: string }) => Promise<void>;
 
@@ -18,20 +18,17 @@ export class HelixCLI {
 
   // engines
   #format: FormatEngine;
-  #storage: StorageEngine;
   #keyring: KeyringEngine;
-  #network: NetworkEngine;
+  #chain: ChainEngine;
 
   constructor(
-    storage: StorageEngine,
     format: FormatEngine,
     keyring: KeyringEngine,
-    network: NetworkEngine,
+    chain: ChainEngine,
   ) {
     this.#format = format;
-    this.#storage = storage;
     this.#keyring = keyring;
-    this.#network = network;
+    this.#chain = chain;
 
     this.#commands = new Map<string, Command>();
     // register command
@@ -39,6 +36,11 @@ export class HelixCLI {
       "help",
       this.handleHelp.bind(this),
       "Print all available commands",
+    );
+    this.#registerCommand(
+      "info",
+      this.handleGetInfo.bind(this),
+      "Get wallet information",
     );
     this.#registerCommand(
       "create",
@@ -52,8 +54,13 @@ export class HelixCLI {
     );
     this.#registerCommand(
       "address",
+      this.handleGetActiveAddress.bind(this),
+      "Get active address",
+    );
+    this.#registerCommand(
+      "addresses",
       this.handleGetAllAddresses.bind(this),
-      "Get addresses list",
+      "Get all created addresses",
     );
     this.#registerCommand(
       "add-address",
@@ -66,9 +73,9 @@ export class HelixCLI {
       "Clear terminal",
     );
     this.#registerCommand(
-      "send",
-      this.handleSend.bind(this),
-      "Send transaction",
+      "transfer",
+      this.handleTransfer.bind(this),
+      "Transfer cryptocurrency",
     );
     this.#registerCommand(
       "balance",
@@ -76,9 +83,21 @@ export class HelixCLI {
       "Fetch balance",
     );
     this.#registerCommand(
-      "networks",
-      this.handleGetNetworks.bind(this),
-      "Get all networks",
+      "chain",
+      this.handleGetActiveChain.bind(this),
+      "Get active chain",
+    );
+    this.#registerCommand(
+      "chains",
+      this.handleGetChains.bind(this),
+      "Get all chains",
+    );
+    this.#registerCommand(
+      "exit",
+      async () => {
+        throw new Error("exit");
+      },
+      "Exit wallet terminal",
     );
   }
 
@@ -321,24 +340,15 @@ export class HelixCLI {
   async handleGetActiveAddress(_: { [key: string]: string }) {
     if (!this.#keyring.isExitSeed()) {
       console.log(
-        this.#format.format(
-          "\n     Wallet not found!\n",
-          FormatType.ERROR,
-          true,
-        ),
+        this.#format.format("Wallet not found!", FormatType.ERROR, true),
       );
 
       return;
     }
-    const storage = this.#storage.getData();
+    const activeAddress = this.#keyring.getActiveAddress();
     console.log(
-      "\n     Active address: ",
-      this.#format.format(
-        storage?.defaultAddress?.evm || "",
-        FormatType.SUCCESS,
-        true,
-      ),
-      "\n",
+      "Active address: ",
+      this.#format.format(activeAddress, FormatType.SUCCESS, true),
     );
   }
 
@@ -386,10 +396,9 @@ export class HelixCLI {
       return;
     }
 
-    const data = this.#storage.getData();
-    console.log("Addresses: ");
+    const addresses = this.#keyring.getAddresses();
 
-    data.addresses.evm.forEach((address: string, index: number) => {
+    addresses.forEach((address: string, index: number) => {
       console.log(
         "(",
         index + 1,
@@ -400,25 +409,76 @@ export class HelixCLI {
   }
 
   async handleFetchBalance(args: { [key: string]: string }) {
-    console.log("Fetch balance");
+    if (!this.#keyring.isExitSeed()) {
+      console.log(
+        this.#format.format("\nWallet not found!\n", FormatType.ERROR, true),
+      );
+
+      return;
+    }
+    const activeAddress = this.#keyring.getActiveAddress();
+    const userBalance = await this.#chain.fetchBalance(
+      "0x4fff0f708c768a46050f9b96c46c265729d1a62f",
+    );
+
+    const currencySymbol = this.#chain.currencySymbol();
+    const currencyDecimal = this.#chain.currencyDecimal();
+
+    console.log(
+      "Balance",
+      this.#format.format(
+        formatUnits(userBalance, currencyDecimal),
+        FormatType.SUCCESS,
+        true,
+      ),
+      currencySymbol,
+    );
   }
 
   async handleFetchPortfolio(args: { [key: string]: string }) {
     console.log("Fetch portfolio");
   }
 
-  async handleGetNetworks(_: { [key: string]: string }) {
-    const totalNetworks = this.#network.totalSupportedNetworks();
+  async handleGetInfo(_: { [key: string]: string }) {
+    if (!this.#keyring.isExitSeed()) {
+      console.log(
+        this.#format.format("\nWallet not found!\n", FormatType.ERROR, true),
+      );
+
+      return;
+    }
+    const activeChain = this.#chain.getActiveChain();
     console.log(
-      "\n     Support",
-      totalNetworks,
-      "netwoks. See",
+      "Active chain: ",
+      this.#format.format(activeChain, FormatType.SUCCESS, true),
+    );
+    const activeAddress = this.#keyring.getActiveAddress();
+    console.log(
+      "Active address: ",
+      this.#format.format(activeAddress, FormatType.SUCCESS, true),
+    );
+  }
+
+  async handleGetActiveChain(_: { [key: string]: string }) {
+    const activeChain = this.#chain.getActiveChain();
+    console.log(
+      "Active chain: ",
+      this.#format.format(activeChain, FormatType.SUCCESS, true),
+    );
+  }
+
+  async handleGetChains(_: { [key: string]: string }) {
+    const totalChains = this.#chain.totalSupportedChains();
+    console.log(
+      "Support",
+      totalChains,
+      "chains. See",
       this.#format.format(
         "https://github.com/wevm/viem/blob/main/src/chains/index.ts",
         FormatType.INFO,
         true,
       ),
-      "for full list.\n",
+      "for full list.",
     );
   }
 
@@ -426,19 +486,7 @@ export class HelixCLI {
     console.clear();
   }
 
-  async handleGetDefaultNetwork(args: { [key: string]: string }) {
-    console.log("Get default networks");
-  }
-
-  async handleChangeNetwork(args: { [key: string]: string }) {
-    console.log("change networks");
-  }
-
-  async handleSetDefaultNetwork(args: { [key: string]: string }) {
-    console.log("set network");
-  }
-
-  async handleSend(args: { [key: string]: string }) {
+  async handleTransfer(args: { [key: string]: string }) {
     this.#namespaces.push("Send");
     if (!this.#keyring.isExitSeed()) {
       console.log(
@@ -452,55 +500,8 @@ export class HelixCLI {
       return;
     }
 
-    if (args["network"] === undefined) {
-      if (args["n"] === undefined) {
-        const data = await input({
-          message: "Enter network name:",
-          validate: (value) =>
-            this.#network.isSupportedNetwork(value) || value === "exit"
-              ? true
-              : `Network '${value}' is not supported, see ${this.#format.format("networks", FormatType.INFO, true)} for full list`,
-          theme: {
-            prefix: this.#formatPrefix(),
-          },
-        });
-        if (data === "exit") {
-          this.#namespaces.pop();
-          return;
-        }
-        args["network"] = data;
-      } else {
-        args["network"] = args["n"];
-      }
-    }
-
-    if (args["from"] === undefined) {
-      if (args["f"] === undefined) {
-        const data = await rawlist({
-          message: "Select from wallet:",
-          choices: this.#storage
-            .getData()
-            .addresses.evm.map((address: string, index: number) => ({
-              value: index + 1,
-              name: address,
-            }))
-            .concat({ value: "exit", name: "Exit" }),
-          theme: {
-            prefix: this.#formatPrefix(),
-          },
-        });
-        if (data === "exit") {
-          this.#namespaces.pop();
-          return;
-        }
-        args["from"] = data as string;
-      } else {
-        args["from"] = args["f"];
-      }
-    }
-
-    if (args["to"] === undefined) {
-      if (args["t"] === undefined) {
+    if (args["receiver"] === undefined) {
+      if (args["r"] === undefined) {
         const data = await input({
           message: "Enter receiver address:",
           // TODO validate address format || exit
@@ -512,16 +513,16 @@ export class HelixCLI {
           this.#namespaces.pop();
           return;
         }
-        args["to"] = data;
+        args["receiver"] = data;
       } else {
-        args["to"] = args["t"];
+        args["receiver"] = args["r"];
       }
     }
 
-    if (args["data"] === undefined) {
-      if (args["d"] === undefined) {
+    if (args["token"] === undefined) {
+      if (args["t"] === undefined) {
         const data = await input({
-          message: "Enter calldata:",
+          message: "Select token to transfer:",
           // TODO validate address format
           theme: {
             prefix: this.#formatPrefix(),
@@ -531,11 +532,38 @@ export class HelixCLI {
           this.#namespaces.pop();
           return;
         }
-        args["data"] = data;
+        args["token"] = data;
       } else {
-        args["data"] = args["d"];
+        args["token"] = args["t"];
       }
     }
+
+    if (args["amount"] === undefined) {
+      if (args["a"] === undefined) {
+        const data = await input({
+          message: "Select asset to transfer:",
+          // TODO validate address format
+          theme: {
+            prefix: this.#formatPrefix(),
+          },
+        });
+        if (data === "exit") {
+          this.#namespaces.pop();
+          return;
+        }
+        args["asset"] = data;
+      } else {
+        args["asset"] = args["a"];
+      }
+    }
+
+    args["value"] = await input({
+      message: "Enter amount to transfer:",
+      // TODO validate number
+      theme: {
+        prefix: this.#formatPrefix(),
+      },
+    });
 
     console.log(args);
 
