@@ -46,6 +46,11 @@ export class HelixCLI {
       "Create a new wallet",
     );
     this.#registerCommand(
+      "import",
+      this.handleImportWallet.bind(this),
+      "Import exited wallet",
+    );
+    this.#registerCommand(
       "address",
       this.handleGetAllAddresses.bind(this),
       "Get addresses list",
@@ -184,6 +189,63 @@ export class HelixCLI {
     console.log("\nType 'help <command>' for more details about a command.");
   }
 
+  async handleImportWallet(_: { [key: string]: string }) {
+    if (this.#keyring.isExitSeed()) {
+      console.log(this.#format.format("Wallet exited!", FormatType.INFO, true));
+
+      return;
+    }
+    this.#namespaces.push("Import Wallet");
+    const enterPassword = await password({
+      message: "Enter a password for your wallet:",
+      mask: "*",
+      validate: (value) => {
+        return value.length < 8
+          ? "Password must be at least 8 characters"
+          : true;
+      },
+      theme: {
+        prefix: this.#formatPrefix(),
+      },
+    });
+    await password({
+      message: "Confirm the password:",
+      mask: "*",
+      validate: (value) => {
+        return value !== enterPassword
+          ? "Password does not match. Please try again."
+          : true;
+      },
+      theme: {
+        prefix: this.#formatPrefix(),
+      },
+    });
+
+    const seed = await password({
+      message: `Input your seed phrase:`,
+      mask: "*",
+      validate: (value) => {
+        return this.#keyring.isValidMnemonic(value)
+          ? true
+          : "Invalid seed format";
+      },
+      theme: {
+        prefix: this.#formatPrefix(),
+      },
+    });
+
+    await this.#keyring.persistSeed(seed, enterPassword);
+
+    console.log(
+      this.#format.format(
+        "Import wallet successfully!",
+        FormatType.SUCCESS,
+        true,
+      ),
+    );
+    this.#namespaces.pop();
+  }
+
   async handleCreateWallet(_: { [key: string]: string }) {
     if (this.#keyring.isExitSeed()) {
       console.log(this.#format.format("Wallet exited!", FormatType.INFO, true));
@@ -287,15 +349,12 @@ export class HelixCLI {
   async handleAddAddress(args: { [key: string]: string }) {
     if (!this.#keyring.isExitSeed()) {
       console.log(
-        this.#format.format(
-          "\n     Wallet not found!\n",
-          FormatType.ERROR,
-          true,
-        ),
+        this.#format.format("Wallet not found!", FormatType.ERROR, true),
       );
 
       return;
     }
+    this.#namespaces.push("Add Address");
     const enterPassword = await password({
       message: "Enter a password to unlock your wallet:",
       mask: "*",
@@ -311,10 +370,11 @@ export class HelixCLI {
 
     const newAddress = await this.#keyring.addAddress(enterPassword);
     console.log(
-      "\n     New address: ",
+      "New address: ",
       this.#format.format(newAddress, FormatType.SUCCESS, true),
-      "\n",
     );
+
+    this.#namespaces.pop();
   }
 
   async handleGetAllAddresses(_: { [key: string]: string }) {

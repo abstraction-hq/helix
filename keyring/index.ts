@@ -2,7 +2,7 @@
 import { english, generateMnemonic, mnemonicToAccount } from "viem/accounts";
 import { StorageEngine } from "@storage/index";
 import { CryptoEngine } from "@crypto/index";
-import { mnemonicToEntropy, entropyToMnemonic } from "bip39";
+import { mnemonicToEntropy, entropyToMnemonic, validateMnemonic } from "bip39";
 import { hashMessage } from "viem";
 
 export class KeyringEngine {
@@ -26,6 +26,10 @@ export class KeyringEngine {
   isValidatePassword(password: string): boolean {
     const data = this.#storage.getData();
     return data.passwordHash === hashMessage(password);
+  }
+
+  isValidMnemonic(mnemonic: string): boolean {
+    return validateMnemonic(mnemonic);
   }
 
   async persistSeed(mnemonic: string, password: string): Promise<void> {

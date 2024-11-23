@@ -1,13 +1,12 @@
 {
   "name": "@helix-cli/helix",
   "version": "1.0.5",
-  "main": "dist/cmd/index.js",
+  "main": "dist/main.js",
   "scripts": {
     "build": "tsc",
     "dev": "ts-node-dev cmd/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "@helix-cli",
+  }, "author": "@helix-cli",
   "license": "MIT",
   "description": "Most powerful crypto wallet on Terminal, Built by developers for developers",
   "repository": {
@@ -33,7 +32,7 @@
     "README.md"
   ],
   "bin": {
-    "helix": "dist/cmd/index.js"
+    "helix": "dist/main.js"
   },
   "dependencies": {
     "bip39": "^3.1.0",
