@@ -1,3 +1,16 @@
+# [1.4.0](https://github.com/helix-cli/helix/compare/v1.3.0...v1.4.0) (2024-11-23)
+
+
+### Bug Fixes
+
+* fix log ([66a0726](https://github.com/helix-cli/helix/commit/66a072641fbb18279f20a7db85b4fb4cd3040c7f))
+
+
+### Features
+
+* **cli:** add new cmd: import ([64f2085](https://github.com/helix-cli/helix/commit/64f208592df39581d8fc52521eeb4911d2d1c2f6))
+* **module:** upgrate to esm module ([a7d8855](https://github.com/helix-cli/helix/commit/a7d885551fc1ca5c2c96f774f6cf54ec63a7fbcc))
+
 # [1.3.0](https://github.com/helix-cli/helix/compare/v1.2.0...v1.3.0) (2024-11-20)
 
 
