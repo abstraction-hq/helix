@@ -2,6 +2,7 @@
 import { FormatEngine, FormatType } from "../format/index.js";
 import { KeyringEngine } from "../keyring/index.js";
 import { ChainEngine } from "../chain/index.js";
+import { TokenEngine } from "../token/index.js";
 import { input, password } from "@inquirer/prompts";
 import { formatUnits } from "viem";
 
@@ -20,15 +21,18 @@ export class HelixCLI {
   #format: FormatEngine;
   #keyring: KeyringEngine;
   #chain: ChainEngine;
+  #token: TokenEngine;
 
   constructor(
     format: FormatEngine,
     keyring: KeyringEngine,
     chain: ChainEngine,
+    token: TokenEngine,
   ) {
     this.#format = format;
     this.#keyring = keyring;
     this.#chain = chain;
+    this.#token = token;
 
     this.#commands = new Map<string, Command>();
     // register command
@@ -91,6 +95,21 @@ export class HelixCLI {
       "chains",
       this.handleGetChains.bind(this),
       "Get all chains",
+    );
+    this.#registerCommand(
+      "tokens",
+      this.handleListTokens.bind(this),
+      "Get all tokens",
+    );
+    this.#registerCommand(
+      "add-token",
+      this.handleAddToken.bind(this),
+      "Add custom token",
+    );
+    this.#registerCommand(
+      "remove-token",
+      this.handleRemoveToken.bind(this),
+      "Remove custom token",
     );
     this.#registerCommand(
       "exit",
@@ -490,11 +509,7 @@ export class HelixCLI {
     this.#namespaces.push("Send");
     if (!this.#keyring.isExitSeed()) {
       console.log(
-        this.#format.format(
-          "\n     Wallet not found!\n",
-          FormatType.ERROR,
-          true,
-        ),
+        this.#format.format("Wallet not found!", FormatType.ERROR, true),
       );
 
       return;
@@ -538,25 +553,6 @@ export class HelixCLI {
       }
     }
 
-    if (args["amount"] === undefined) {
-      if (args["a"] === undefined) {
-        const data = await input({
-          message: "Select asset to transfer:",
-          // TODO validate address format
-          theme: {
-            prefix: this.#formatPrefix(),
-          },
-        });
-        if (data === "exit") {
-          this.#namespaces.pop();
-          return;
-        }
-        args["asset"] = data;
-      } else {
-        args["asset"] = args["a"];
-      }
-    }
-
     args["value"] = await input({
       message: "Enter amount to transfer:",
       // TODO validate number
@@ -569,5 +565,30 @@ export class HelixCLI {
 
     console.log("Send");
     this.#namespaces.pop();
+  }
+
+  async handleAddToken(args: { [key: string]: string }) {
+    if (!this.#keyring.isExitSeed()) {
+      console.log(
+      this.#format.format("Wallet not found!", FormatType.ERROR, true),
+      );
+      return;
+    }
+    this.#namespaces.push("Add Token");
+    const token = await input({
+      message: "Enter token address:",
+      // TODO validate address format
+      theme: {
+      prefix: this.#formatPrefix(),
+      },
+    });
+  }
+
+  async handleRemoveToken(args: { [key: string]: string }) {
+    console.log("Remove token");
+  }
+
+  async handleListTokens(args: { [key: string]: string }) {
+    console.log("List token");
   }
 }
