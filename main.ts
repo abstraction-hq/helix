@@ -1,10 +1,10 @@
-#!/usr/bin/env node
-
+#!/usr/bin/env node --no-warnings
 import { FormatEngine } from "./format/index.js";
 import { StorageEngine } from "./storage/index.js";
 import { KeyringEngine } from "./keyring/index.js";
 import { CryptoEngine } from "./crypto/index.js";
-import { NetworkEngine } from "./network/index.js";
+import { ChainEngine } from "./chain/index.js";
+import { TokenEngine } from "./token/index.js";
 
 import { HelixCLI } from "./cli/index.js";
 
@@ -19,9 +19,10 @@ async function main() {
   const crypto = new CryptoEngine();
   const format = new FormatEngine();
   const keyring = new KeyringEngine(storage, crypto);
-  const network = new NetworkEngine();
+  const chain = new ChainEngine(storage);
+  const token = new TokenEngine(storage);
 
-  const cli = new HelixCLI(storage, format, keyring, network);
+  const cli = new HelixCLI(format, keyring, chain, token);
 
   cli.start();
 }

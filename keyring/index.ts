@@ -3,7 +3,7 @@ import { english, generateMnemonic, mnemonicToAccount } from "viem/accounts";
 import { StorageEngine } from "../storage/index.js";
 import { CryptoEngine } from "../crypto/index.js";
 import { mnemonicToEntropy, entropyToMnemonic, validateMnemonic } from "bip39";
-import { hashMessage } from "viem";
+import { Address, hashMessage, Transaction } from "viem";
 
 export class KeyringEngine {
   #storage: StorageEngine;
@@ -72,15 +72,60 @@ export class KeyringEngine {
     return newAccount.address;
   }
 
+  getActiveAddress(): Address {
+    const data = this.#storage.getData();
+    return data.defaultAddress.evm as Address;
+  }
+
+  getAddresses(): string[] {
+    const data = this.#storage.getData();
+    return data.addresses.evm;
+  }
+
+  async setActiveAddress(address: string): Promise<void> {
+    const data = this.#storage.getData();
+    data.defaultAddress.evm = address;
+    this.#storage.setData(data);
+    await this.#storage.save();
+  }
+
   async isUnlock(): Promise<boolean> {
     return false;
   }
 
   async signMessage(
     index: number,
-    sign: Function,
     message: string,
+    password: string,
   ): Promise<string> {
-    return "";
+    const data = this.#storage.getData();
+    const mnemonic = entropyToMnemonic(
+      this.#crypto.decryptAesGcm(data.encryptedSeed, password) as string,
+    );
+    const account = mnemonicToAccount(mnemonic, {
+      addressIndex: index,
+    });
+
+    const signature = await account.signMessage({
+      message,
+    });
+    return signature;
+  }
+
+  async signTransaction(
+    index: number,
+    transaction: Transaction,
+    password: string,
+  ): Promise<string> {
+    const data = this.#storage.getData();
+    const mnemonic = entropyToMnemonic(
+      this.#crypto.decryptAesGcm(data.encryptedSeed, password) as string,
+    );
+    const account = mnemonicToAccount(mnemonic, {
+      addressIndex: index,
+    });
+
+    const signature = await account.signTransaction(transaction);
+    return signature;
   }
 }
