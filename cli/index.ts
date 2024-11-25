@@ -1,13 +1,12 @@
 #!/usr/bin/env node
-import { Command } from 'commander'; 
-import { input, password } from "@inquirer/prompts"; import { formatUnits, isAddress, Address } from "viem";
+import { Command } from "commander";
+import { input, password, rawlist } from "@inquirer/prompts";
+import { formatUnits, isAddress, Address } from "viem";
 import { FormatEngine, FormatType } from "../format/index.js";
 import { KeyringEngine } from "../keyring/index.js";
 import { ChainEngine } from "../chain/index.js";
 import { TokenEngine } from "../token/index.js";
-import packageJson from '../package.json' assert {type: 'json'};
-
-type CommandHandler = (args: { [key: string]: string }) => Promise<void>;
+import packageJson from "../package.json" assert { type: "json" };
 
 export class HelixCLI {
   #program: Command;
@@ -32,80 +31,62 @@ export class HelixCLI {
     this.#program = new Command();
 
     this.#program
-      .name('helix')
-      .description('Helix Crypto Wallet Terminal')
+      .name("helix")
+      .description("Helix Crypto Wallet Terminal")
       .version(packageJson.version);
 
-    // register command
-    this.#registerCommand(
-      "info",
-      this.handleGetInfo.bind(this),
-      "Get wallet information",
-    );
-    this.#registerCommand(
-      "create",
-      this.handleCreateWallet.bind(this),
-      "Create a new wallet",
-    );
-    this.#registerCommand(
-      "import",
-      this.handleImportWallet.bind(this),
-      "Import exited wallet",
-    );
-    this.#registerCommand(
-      "address",
-      this.handleGetAllAddresses.bind(this),
-      "Get wallet address",
-    );
-    this.#registerCommand(
-      "add-address",
-      this.handleAddAddress.bind(this),
-      "Add address",
-    );
-    this.#registerCommand(
-      "clear",
-      this.handleClearTerminal.bind(this),
-      "Clear terminal",
-    );
-    this.#registerCommand(
-      "transfer",
-      this.handleTransfer.bind(this),
-      "Transfer cryptocurrency",
-    );
-    this.#registerCommand(
-      "balance",
-      this.handleFetchBalance.bind(this),
-      "Fetch balance",
-    );
-    this.#registerCommand(
-      "chain",
-      this.handleGetActiveChain.bind(this),
-      "Get active chain",
-    );
-    this.#registerCommand(
-      "chains",
-      this.handleGetChains.bind(this),
-      "Get all chains",
-    );
-    this.#registerCommand(
-      "tokens",
-      this.handleListTokens.bind(this),
-      "Get all tokens",
-    );
-    this.#registerCommand(
-      "add-token",
-      this.handleAddToken.bind(this),
-      "Add custom token",
-    );
-    this.#registerCommand(
-      "remove-token",
-      this.handleRemoveToken.bind(this),
-      "Remove custom token",
-    );
+    this.#registerCommands();
   }
 
-  #registerCommand(name: string, handler: CommandHandler, description: string) {
-    this.#program.command(name).description(description).action(handler)
+  #registerCommands() {
+    this.#program
+      .command("create")
+      .description("Create a new wallet")
+      .action(this.handleCreateWallet.bind(this));
+    this.#program
+      .command("import")
+      .description("Import exited wallet")
+      .action(this.handleImportWallet.bind(this));
+    this.#program
+      .command("address")
+      .description("Get wallet address")
+      .action(this.handleGetAllAddresses.bind(this));
+    this.#program
+      .command("add-address")
+      .description("Add address")
+      .action(this.handleAddAddress.bind(this));
+    this.#program
+      .command("set-address")
+      .description("Set active address")
+      .action(this.handleSetActiveAddress.bind(this));
+    this.#program
+      .command("transfer")
+      .description("Transfer cryptocurrency")
+      .action(this.handleTransfer.bind(this));
+    this.#program
+      .command("balance")
+      .description("Fetch balance")
+      .action(this.handleFetchBalance.bind(this));
+    this.#program
+      .command("chain")
+      .description("Get all chains")
+      .action(this.handleGetChains.bind(this));
+    this.#program
+      .command("set-chain")
+      .description("Set active chain")
+      .action(this.handleSetActiveChain.bind(this));
+    this.#program
+      .command("tokens")
+      .description("Get all tokens")
+      .action(this.handleListTokens.bind(this));
+    this.#program
+      .command("add-token")
+      .description("Add custom token")
+      .action(this.handleAddToken.bind(this));
+    this.#program
+      .command("remove-token")
+      .description("Remove custom token")
+      .action(this.handleRemoveToken.bind(this));
   }
 
   public start() {
@@ -185,16 +166,9 @@ export class HelixCLI {
 
     const seed = this.#keyring.generateNewSeeds();
     console.log(
-      this.#format.format(
-        "\n     New Seed Generated:",
-        FormatType.SUCCESS,
-        false,
-      ),
+      this.#format.format("New Seed Generated:", FormatType.SUCCESS, false),
+      this.#format.format(seed, FormatType.INFO, true),
     );
-    console.log(
-      this.#format.format(`\n           ${seed}\n`, FormatType.INFO, true),
-    );
-
     await input({
       message: `Please save your seed and don't share it with anyone? (type ${this.#format.format("yes", FormatType.SUCCESS, true)} to confirm):`,
       validate: (value) => {
@@ -214,7 +188,7 @@ export class HelixCLI {
 
     console.log(
       this.#format.format(
-        "\n     Create wallet successfully!\n",
+        "Create wallet successfully!",
         FormatType.SUCCESS,
         true,
       ),
@@ -236,11 +210,7 @@ export class HelixCLI {
     );
   }
 
-  async handleSetDefaultAddress(args: { [key: string]: string }) {
-    console.log("set address");
-  }
-
-  async handleAddAddress(args: { [key: string]: string }) {
+  async handleAddAddress(_: { [key: string]: string }) {
     if (!this.#keyring.isExitSeed()) {
       console.log(
         this.#format.format("Wallet not found!", FormatType.ERROR, true),
@@ -263,13 +233,30 @@ export class HelixCLI {
       "New address: ",
       this.#format.format(newAddress, FormatType.SUCCESS, true),
     );
+  }
 
+  async handleSetActiveAddress(_: { [key: string]: string }) {
+    if (!this.#keyring.isExitSeed()) {
+      console.log(
+        this.#format.format("Wallet not found!", FormatType.ERROR, true),
+      );
+
+      return;
+    }
+
+    const selectedAddress = (await rawlist({
+      message: "Select from wallet:",
+      choices: this.#keyring.getAddresses().map((address: string) => address),
+    })) as string;
+
+    await this.#keyring.setActiveAddress(selectedAddress);
+    console.log("Set active address successfully!");
   }
 
   async handleGetAllAddresses(_: { [key: string]: string }) {
     if (!this.#keyring.isExitSeed()) {
       console.log(
-        this.#format.format("\nWallet not found!\n", FormatType.ERROR, true),
+        this.#format.format("Wallet not found!", FormatType.ERROR, true),
       );
 
       return;
@@ -278,12 +265,15 @@ export class HelixCLI {
     const addresses = this.#keyring.getAddresses();
     const activeAddress = this.#keyring.getActiveAddress();
 
+    console.log("Addresses:");
     addresses.forEach((address: string, index: number) => {
       console.log(
         "(",
         index + 1,
         "):",
-        activeAddress == address ? this.#format.format(address, FormatType.SUCCESS, true) : address,
+        activeAddress == address
+          ? this.#format.format(address, FormatType.SUCCESS, true)
+          : address,
       );
     });
   }
@@ -348,6 +338,11 @@ export class HelixCLI {
   }
 
   async handleGetChains(_: { [key: string]: string }) {
+    const acitveChain = this.#chain.getActiveChain();
+    console.log(
+      "Active chain: ",
+      this.#format.format(acitveChain, FormatType.SUCCESS, true),
+    );
     const totalChains = this.#chain.totalSupportedChains();
     console.log(
       "Support",
@@ -362,8 +357,23 @@ export class HelixCLI {
     );
   }
 
-  async handleClearTerminal(_: { [key: string]: string }) {
-    console.clear();
+  async handleSetActiveChain(_: { [key: string]: string }) {
+    const selectedChain = await input({
+      message: "Select chain to set active:",
+      // TODO validate chain name
+      validate: (value) =>
+        this.#chain.isSupportedChain(value)
+          ? true
+          : `Chain not supported, See ${this.#format.format(
+              "https://github.com/wevm/viem/blob/main/src/chains/index.ts",
+              FormatType.INFO,
+              true,
+            )} for full list.`,
+    });
+
+    await this.#chain.saveActiveChain(selectedChain);
+
+    console.log("Set active chain successfully!");
   }
 
   async handleTransfer(args: { [key: string]: string }) {
