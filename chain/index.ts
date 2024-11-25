@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as chains from "viem/chains";
-import { createPublicClient, http, PublicClient, Address } from "viem";
+import { createPublicClient, http, PublicClient, Address, erc20Abi } from "viem";
 import { StorageEngine } from "../storage/index.js";
 
 export class ChainEngine {
@@ -30,7 +30,32 @@ export class ChainEngine {
 
   async fetchBalance(address: Address): Promise<bigint> {
     const balance = await this.#client.getBalance({ address });
-    return balance
+    return balance;
+  }
+
+  async fetchTokenDetails(address: Address, walletAddress: Address): Promise<any> {
+    const details = await this.#client.multicall({
+      contracts: [
+        {
+          address,
+          abi: erc20Abi,
+          functionName: "name"
+        },
+        {
+          address,
+          abi: erc20Abi,
+          functionName: "symbol"
+        },
+        {
+          address,
+          abi: erc20Abi,
+          functionName: "balanceOf",
+          args: [walletAddress]
+        },
+      ]
+    });
+
+    return details;
   }
 
   currencySymbol(): string {
