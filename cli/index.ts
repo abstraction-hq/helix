@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander'; 
-import { input, password } from "@inquirer/prompts";
-import { formatUnits, isAddress, Address } from "viem";
+import { input, password } from "@inquirer/prompts"; import { formatUnits, isAddress, Address } from "viem";
 import { FormatEngine, FormatType } from "../format/index.js";
 import { KeyringEngine } from "../keyring/index.js";
 import { ChainEngine } from "../chain/index.js";
