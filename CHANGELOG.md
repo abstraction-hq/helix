@@ -1,3 +1,13 @@
+# [1.5.0](https://github.com/helix-cli/helix/compare/v1.4.0...v1.5.0) (2024-11-25)
+
+
+### Features
+
+* **cli, chain:** rename network -> chain, add balance cli ([42b28d6](https://github.com/helix-cli/helix/commit/42b28d624b44acf325cde2e9ce6d70f175b46730))
+* **cli:** implement chain, set-chain ([7f3c609](https://github.com/helix-cli/helix/commit/7f3c6094d9620a71872452330976690d91b2aaec))
+* **cli:** switch to command style ([6bb3eea](https://github.com/helix-cli/helix/commit/6bb3eea8f5d239fda408291336b94e06b11e6a1b))
+* **engine:** add token engine ([c4b1bb0](https://github.com/helix-cli/helix/commit/c4b1bb052e966eee108e110b4f68a5969b897dbc))
+
 # [1.4.0](https://github.com/helix-cli/helix/compare/v1.3.0...v1.4.0) (2024-11-23)
 
 
