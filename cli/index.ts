@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { input, password, rawlist } from "@inquirer/prompts";
+import { input, password, rawlist, search, confirm } from "@inquirer/prompts";
 import { formatUnits, isAddress, Address } from "viem";
 import { FormatEngine, FormatType } from "../format/index.js";
 import { KeyringEngine } from "../keyring/index.js";
@@ -58,6 +58,7 @@ export class HelixCLI {
     this.#program
       .command("set-address")
       .description("Set active address")
+      .argument("[index]", "Index of address to set active")
       .action(this.handleSetActiveAddress.bind(this));
     this.#program
       .command("transfer")
@@ -73,6 +74,7 @@ export class HelixCLI {
       .action(this.handleGetChains.bind(this));
     this.#program
       .command("set-chain")
+      .argument("[chain]", "Chain to set active")
       .description("Set active chain")
       .action(this.handleSetActiveChain.bind(this));
     this.#program
@@ -82,6 +84,7 @@ export class HelixCLI {
     this.#program
       .command("add-token")
       .description("Add custom token")
+      .argument("[address]", "Address token to add")
       .action(this.handleAddToken.bind(this));
     this.#program
       .command("remove-token")
@@ -235,7 +238,7 @@ export class HelixCLI {
     );
   }
 
-  async handleSetActiveAddress(_: { [key: string]: string }) {
+  async handleSetActiveAddress(index: string) {
     if (!this.#keyring.isExitSeed()) {
       console.log(
         this.#format.format("Wallet not found!", FormatType.ERROR, true),
@@ -244,13 +247,35 @@ export class HelixCLI {
       return;
     }
 
-    const selectedAddress = (await rawlist({
-      message: "Select from wallet:",
-      choices: this.#keyring.getAddresses().map((address: string) => address),
-    })) as string;
+    let selectedAddress = "0x";
+
+    if (index !== undefined) {
+      if (
+        isNaN(Number(index)) ||
+        !Number.isInteger(Number(index)) ||
+        Number(index) < 1 ||
+        Number(index) - 1 >= this.#keyring.getAddresses().length
+      ) {
+        console.log(
+          this.#format.format("Invalid index!", FormatType.ERROR, true),
+        );
+        return;
+      }
+      selectedAddress = this.#keyring.getAddresses()[
+        Number(index) - 1
+      ] as string;
+    } else {
+      selectedAddress = (await rawlist({
+        message: "Select from wallet:",
+        choices: this.#keyring.getAddresses().map((address: string) => address),
+      })) as string;
+    }
 
     await this.#keyring.setActiveAddress(selectedAddress);
-    console.log("Set active address successfully!");
+    console.log(
+      this.#format.format(selectedAddress, FormatType.SUCCESS, true),
+      "is now active!",
+    );
   }
 
   async handleGetAllAddresses(_: { [key: string]: string }) {
@@ -287,9 +312,7 @@ export class HelixCLI {
       return;
     }
     const activeAddress = this.#keyring.getActiveAddress();
-    const userBalance = await this.#chain.fetchBalance(
-      "0x4fff0f708c768a46050f9b96c46c265729d1a62f",
-    );
+    const userBalance = await this.#chain.fetchBalance(activeAddress);
 
     const currencySymbol = this.#chain.currencySymbol();
     const currencyDecimal = this.#chain.currencyDecimal();
@@ -329,14 +352,6 @@ export class HelixCLI {
     );
   }
 
-  async handleGetActiveChain(_: { [key: string]: string }) {
-    const activeChain = this.#chain.getActiveChain();
-    console.log(
-      "Active chain: ",
-      this.#format.format(activeChain, FormatType.SUCCESS, true),
-    );
-  }
-
   async handleGetChains(_: { [key: string]: string }) {
     const acitveChain = this.#chain.getActiveChain();
     console.log(
@@ -357,23 +372,34 @@ export class HelixCLI {
     );
   }
 
-  async handleSetActiveChain(_: { [key: string]: string }) {
-    const selectedChain = await input({
-      message: "Select chain to set active:",
-      // TODO validate chain name
-      validate: (value) =>
-        this.#chain.isSupportedChain(value)
-          ? true
-          : `Chain not supported, See ${this.#format.format(
-              "https://github.com/wevm/viem/blob/main/src/chains/index.ts",
-              FormatType.INFO,
-              true,
-            )} for full list.`,
-    });
+  async handleSetActiveChain(chain: string | null) {
+    let selectedChain;
+    if (chain) {
+      if (!this.#chain.isSupportedChain(chain)) {
+        console.log(
+          this.#format.format("Chain not supported!", FormatType.ERROR, true),
+        );
+        return;
+      }
 
+      selectedChain = chain;
+    } else {
+      selectedChain = await search<string>({
+        message: "Select chain to set active:",
+        source: async (input) => {
+          return this.#chain.filterChain(input);
+        },
+      });
+    }
+    if (!selectedChain) {
+      return;
+    }
     await this.#chain.saveActiveChain(selectedChain);
-
-    console.log("Set active chain successfully!");
+    const activeChain = this.#chain.getActiveChain();
+    console.log(
+      this.#format.format(activeChain, FormatType.SUCCESS, true),
+      "is now active!",
+    );
   }
 
   async handleTransfer(args: { [key: string]: string }) {
@@ -425,31 +451,94 @@ export class HelixCLI {
     console.log("Send");
   }
 
-  async handleAddToken(args: { [key: string]: string }) {
+  async handleAddToken(address: string | null) {
     if (!this.#keyring.isExitSeed()) {
       console.log(
         this.#format.format("Wallet not found!", FormatType.ERROR, true),
       );
       return;
     }
-    const token = (await input({
-      message: "Enter token address:",
-      validate: (value) => (isAddress(value) ? true : "Invalid address format"),
-    })) as Address;
+    let token;
+    if (address) {
+      if (!isAddress(address)) {
+        console.log(
+          this.#format.format("Invalid address format", FormatType.ERROR, true),
+        );
+        return;
+      }
+
+      token = address;
+    } else {
+      token = (await input({
+        message: "Enter token address:",
+        validate: (value) =>
+          isAddress(value) ? true : "Invalid address format",
+      })) as Address;
+    }
 
     const activeWallet = this.#keyring.getActiveAddress();
-    const tokenDetails = await this.#chain.fetchTokenDetails(
-      token,
-      activeWallet,
+    const [name, symbol, decimals, balance] =
+      await this.#chain.fetchTokenDetails(token, activeWallet);
+
+    if (!name) {
+      console.log(
+        this.#format.format("Token not found!", FormatType.ERROR, true),
+      );
+      return;
+    }
+
+    console.log(this.#format.format("Found token", FormatType.INFO, true));
+    console.log(
+      this.#format.format("Token Name:", FormatType.SUCCESS, false),
+      name,
     );
-    console.log(tokenDetails);
+    console.log(
+      this.#format.format("Token Symbol:", FormatType.SUCCESS, false),
+      symbol,
+    );
+    console.log(
+      this.#format.format("Token Decimals:", FormatType.SUCCESS, false),
+      decimals,
+    );
+    console.log(
+      this.#format.format("Balance:", FormatType.SUCCESS, false),
+      parseFloat(formatUnits(balance, 18)).toFixed(2),
+    );
+
+    const isConfirm = await confirm({
+      message: "Do you want to add this token?",
+    });
+
+    if (isConfirm) {
+      this.#token.addToken(
+        this.#chain.getActiveChain(),
+        token,
+        name,
+        symbol,
+        decimals,
+      );
+
+      console.log(
+        "Token",
+        this.#format.format(name, FormatType.SUCCESS, true),
+        "added successfully!",
+      );
+    }
   }
 
   async handleRemoveToken(args: { [key: string]: string }) {
     console.log("Remove token");
   }
 
-  async handleListTokens(args: { [key: string]: string }) {
-    console.log("List token");
+  async handleListTokens() {
+    const activeChain = this.#chain.getActiveChain();
+    const currcencySymbol = this.#chain.currencySymbol();
+    const tokens = this.#token.getTokens(activeChain);
+
+    console.log("Tokens:");
+    console.log("(", 1, "):", currcencySymbol);
+    Object.keys(tokens).forEach((address: string, index: number) => {
+      console.log("(", index + 2, "):", address);
+    });
   }
 }

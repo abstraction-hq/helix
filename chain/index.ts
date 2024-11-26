@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 import * as chains from "viem/chains";
-import { createPublicClient, http, PublicClient, Address, erc20Abi } from "viem";
+import {
+  createPublicClient,
+  http,
+  PublicClient,
+  Address,
+  erc20Abi,
+} from "viem";
 import { StorageEngine } from "../storage/index.js";
 
 export class ChainEngine {
@@ -28,34 +34,52 @@ export class ChainEngine {
     await this.#storage.save();
   }
 
+  async filterChain(keyword: string | undefined): Promise<string[]> {
+    const chainKeys = Object.keys(chains);
+    if (!keyword) {
+      return chainKeys;
+    }
+    return chainKeys.filter((chain) => chain.includes(keyword));
+  }
+
   async fetchBalance(address: Address): Promise<bigint> {
     const balance = await this.#client.getBalance({ address });
     return balance;
   }
 
-  async fetchTokenDetails(address: Address, walletAddress: Address): Promise<any> {
+  async fetchTokenDetails(
+    address: Address,
+    walletAddress: Address,
+  ): Promise<any> {
     const details = await this.#client.multicall({
       contracts: [
         {
           address,
           abi: erc20Abi,
-          functionName: "name"
+          functionName: "name",
         },
         {
           address,
           abi: erc20Abi,
-          functionName: "symbol"
+          functionName: "symbol",
+        },
+        {
+          address,
+          abi: erc20Abi,
+          functionName: "decimals",
         },
         {
           address,
           abi: erc20Abi,
           functionName: "balanceOf",
-          args: [walletAddress]
+          args: [walletAddress],
         },
-      ]
+      ],
     });
 
-    return details;
+    return details.map((detail) => {
+      return detail.result;
+    })
   }
 
   currencySymbol(): string {
