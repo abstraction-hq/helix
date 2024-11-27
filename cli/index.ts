@@ -532,11 +532,11 @@ export class HelixCLI {
 
   async handleListTokens() {
     const activeChain = this.#chain.getActiveChain();
-    const currcencySymbol = this.#chain.currencySymbol();
+    const currencySymbol = this.#chain.currencySymbol();
     const tokens = this.#token.getTokens(activeChain);
 
     console.log("Tokens:");
-    console.log("(", 1, "):", currcencySymbol);
+    console.log("(", 1, "):", currencySymbol);
     Object.keys(tokens).forEach((address: string, index: number) => {
       console.log("(", index + 2, "):", address);
     });
