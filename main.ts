@@ -1,5 +1,5 @@
 #!/usr/bin/env node --no-warnings
-import { FormatEngine } from "./format/index.js";
+import { FormatEngine, FormatType } from "./format/index.js";
 import { StorageEngine } from "./storage/index.js";
 import { KeyringEngine } from "./keyring/index.js";
 import { CryptoEngine } from "./crypto/index.js";
@@ -8,10 +8,10 @@ import { TokenEngine } from "./token/index.js";
 
 import { HelixCLI } from "./cli/index.js";
 
-import updateNotifier from 'update-notifier';
-import packageJson from './package.json' assert {type: 'json'};
+import updateNotifier from "update-notifier";
+import packageJson from "./package.json" assert { type: "json" };
 
-updateNotifier({pkg: packageJson}).notify();
+updateNotifier({ pkg: packageJson }).notify();
 
 async function main() {
   // init engines
@@ -23,8 +23,7 @@ async function main() {
   const token = new TokenEngine(storage);
 
   const cli = new HelixCLI(format, keyring, chain, token);
-
-  cli.start();
+  cli.start()
 }
 
 main();

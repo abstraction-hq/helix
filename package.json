@@ -42,7 +42,7 @@
     "bip39": "^3.1.0",
     "chalk": "^4.1.2",
     "commander": "^12.1.0",
-    "inquirer": "^12.1.0",
+    "enquirer": "^2.4.1",
     "module-alias": "^2.2.3",
     "update-notifier": "^7.3.1",
     "viem": "^2.21.48"
