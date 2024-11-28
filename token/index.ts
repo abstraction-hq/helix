@@ -13,7 +13,7 @@ export class TokenEngine {
     [token: string]: { name: string; symbol: string; decimals: number };
   } {
     const data = this.#storage.getData();
-    return data["tokens"][chain] || {};
+    return data["tokens"] ? data["tokens"][chain] : {};
   }
 
   async addToken(
