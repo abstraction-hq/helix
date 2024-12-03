@@ -1,12 +1,12 @@
 #!/usr/bin/env node
+import enquirer from "enquirer";
+import { Address, Hex, parseUnits, zeroAddress } from "viem";
 import { FormatEngine, FormatType } from "../format/index.js";
 import { KeyringEngine } from "../keyring/index.js";
 import { ChainEngine } from "../chain/index.js";
 import { TokenEngine } from "../token/index.js";
 import { UTXOEngine } from "../utxo/index.js";
-import enquirer from "enquirer";
-import { plonk } from "snarkjs";
-import { Address, parseUnits } from "viem";
+import { CryptoEngine } from "../crypto/index.js";
 
 type CommandHandler = (args: string[]) => Promise<void>;
 
@@ -22,6 +22,7 @@ export class HelixCLI {
   #chain: ChainEngine;
   #token: TokenEngine;
   #utxo: UTXOEngine;
+  #crypto: CryptoEngine;
   #commands: Map<string, Command> = new Map();
 
   #isRunning = true;
@@ -32,12 +33,14 @@ export class HelixCLI {
     chain: ChainEngine,
     token: TokenEngine,
     utxo: UTXOEngine,
+    crypto: CryptoEngine,
   ) {
     this.#format = format;
     this.#keyring = keyring;
     this.#chain = chain;
     this.#token = token;
     this.#utxo = utxo;
+    this.#crypto = crypto;
 
     this.#commands.set("help", {
       description: "Show available commands",
@@ -56,8 +59,8 @@ export class HelixCLI {
       handler: this.createWallet,
     });
     this.#commands.set("address", {
-      description: "Get all addresses",
-      handler: this.getAddresses,
+      description: "Get address",
+      handler: this.getAddress,
     });
     this.#commands.set("deposit", {
       description: "Deposit private pool",
@@ -109,7 +112,7 @@ export class HelixCLI {
   };
 
   deposit = async () => {
-    if (!this.#keyring.isExitSeed()) {
+    if (!this.#keyring.isExitedKeypair()) {
       console.log(
         this.#format.format("Wallet not found!", FormatType.ERROR, true),
       );
@@ -117,13 +120,30 @@ export class HelixCLI {
       return;
     }
 
+    /*
+    const enterPassword = (await enquirer.prompt({
+      type: "password",
+      name: "enterPassword",
+      message: "Enter your password to unlock your wallet:",
+    })) as { enterPassword: string };
+
+    if (!this.#keyring.unlock(enterPassword.enterPassword)) {
+      console.log(
+        this.#format.format("Password incorrect!", FormatType.ERROR, true),
+      );
+      return;
+    }
+    */
+
     const tokenAddress = (await enquirer.prompt({
       type: "input",
       name: "tokenAddress",
       message: "Enter the token address(enter for native token):",
     })) as { tokenAddress: Address };
 
-    console.log("Token Address:", tokenAddress.tokenAddress);
+    if (!tokenAddress.tokenAddress) {
+      tokenAddress.tokenAddress = zeroAddress;
+    }
 
     const inAmount = (await enquirer.prompt({
       type: "number",
@@ -140,47 +160,54 @@ export class HelixCLI {
       message: "Enter the receiver address(enter for active address):",
     })) as { receiver: Address };
 
-    console.log(inAmount.amount, receiver.receiver);
+    if (!receiver.receiver) {
+      receiver.receiver = this.#keyring.getAddress();
+    }
 
-    const inAmountParsed = parseUnits(inAmount.amount.toString(), 18).toString();
+    const inAmountParsed = parseUnits(inAmount.amount.toString(), 18);
 
     const proveParameters = {
-      inPublicAmount: inAmountParsed,
+      inPublicAmount: inAmountParsed.toString(),
       outPublicAmount: "0",
       inputAmounts: ["0", "0"],
       inputSecrets: ["0", "0"],
-      outputAmounts: [inAmountParsed, "0"],
+      outputAmounts: [inAmountParsed.toString(), "0"],
       outputSecrets: [Math.floor(Math.random() * 1000000), "0"],
     };
-    try {
-      let { proof, publicSignals } = await plonk.fullProve(
-        proveParameters,
-        "circuits/transfer2.wasm",
-        "circuits/circuit_final.zkey",
-      );
 
-      console.log("Proof:", proof);
-      console.log("Public Signals:", publicSignals);
-    } catch (error) {
-      console.log(error);
-      return
-    }
+    const message = this.#crypto.encryptSymmetric(
+      this.#keyring.getEncryptionPublicKey(),
+      (proveParameters.outputSecrets[0] as number).toString(),
+    );
+
+    console.log("Message:", message);
+
+    /*
+    let [proof, publicSignals] =
+      await this.#crypto.calucateZkProof(proveParameters);
+
+    const transaction = await this.#chain.buildTransfer2Transaction(
+      tokenAddress.tokenAddress,
+      BigInt(inAmountParsed),
+      this.#keyring.getAddress(),
+      receiver.receiver,
+      BigInt(0),
+      zeroAddress,
+      proof,
+      publicSignals,
+      "0x",
+    );
+
+    console.log(transaction);
+    */
   };
 
   privateSend: CommandHandler = async () => {
-    if (!this.#keyring.isExitSeed()) {
-      console.log(
-        this.#format.format("Wallet not found!", FormatType.ERROR, true),
-      );
-
-      return;
-    }
-
     console.log("Send token privately");
   };
 
-  getAddresses: CommandHandler = async () => {
-    if (!this.#keyring.isExitSeed()) {
+  getAddress: CommandHandler = async () => {
+    if (!this.#keyring.isExitedKeypair()) {
       console.log(
         this.#format.format("Wallet not found!", FormatType.ERROR, true),
       );
@@ -188,24 +215,18 @@ export class HelixCLI {
       return;
     }
 
-    const addresses = this.#keyring.getAddresses();
-    const activeAddress = this.#keyring.getActiveAddress();
-
-    console.log("Addresses:");
-    addresses.forEach((address: string, index: number) => {
-      console.log(
-        "(",
-        index + 1,
-        "):",
-        activeAddress == address
-          ? this.#format.format(address, FormatType.SUCCESS)
-          : address,
-      );
-    });
+    console.log(
+      "Address:",
+      this.#format.format(this.#keyring.getAddress(), FormatType.SUCCESS),
+    );
+    console.log(
+      "Encryption Key:",
+      this.#format.format(this.#keyring.getEncryptionPublicKey(), FormatType.SUCCESS),
+    );
   };
 
   createWallet: CommandHandler = async () => {
-    if (this.#keyring.isExitSeed()) {
+    if (this.#keyring.isExitedKeypair()) {
       console.log(this.#format.format("Wallet exited!", FormatType.INFO));
 
       return;
@@ -231,18 +252,18 @@ export class HelixCLI {
       },
     });
 
-    const seed = this.#keyring.generateNewSeeds();
+    const privateKey: Hex = this.#keyring.generateNewPrivateKey();
     console.log(
-      this.#format.format("New Seed Generated:", FormatType.SUCCESS),
-      this.#format.format(seed, FormatType.INFO, true),
+      this.#format.format("New Privatekey Generated:", FormatType.SUCCESS),
+      this.#format.format(privateKey, FormatType.INFO, true),
     );
-    const { confirmSeed } = (await enquirer.prompt({
+    const { confirmSave } = (await enquirer.prompt({
       type: "confirm",
-      name: "confirmSeed",
-      message: `Please save your seed and don't share it with anyone?`,
-    })) as { confirmSeed: boolean };
+      name: "confirmSave",
+      message: `Please save your private key and don't share it with anyone?`,
+    })) as { confirmSave: boolean };
 
-    if (!confirmSeed) {
+    if (!confirmSave) {
       console.log(
         this.#format.format(
           "You must save your seed to create a wallet!",
@@ -253,7 +274,7 @@ export class HelixCLI {
       return;
     }
 
-    await this.#keyring.persistSeed(seed, enterPassword.enterPassword);
+    await this.#keyring.savePrivateKey(privateKey, enterPassword.enterPassword);
 
     console.log(
       this.#format.format(
@@ -268,46 +289,40 @@ export class HelixCLI {
     this.#isRunning = false;
   };
 
+  listenForCommand = async () => {
+    const response: { command: string } = (await enquirer.prompt({
+      type: "input",
+      name: "command",
+      validate: this.#validateCommand,
+      format: this.#highlightCommand,
+      message: "➜",
+    })) as { command: string };
+
+    if (!response || !response.command) {
+      return;
+    }
+
+    if (response.command === "exit") {
+      this.exit();
+      return;
+    }
+    await this.handleCommand(response.command.split(" "));
+  };
+
   start = async () => {
     console.log(
       `Welcome to Helix CLI, type ${this.#format.format("`help`", FormatType.SUCCESS)} to see available commands`,
     );
     while (this.#isRunning) {
       try {
-        const response: { command: string } = (await enquirer.prompt({
-          type: "input",
-          name: "command",
-          validate: this.#validateCommand,
-          format: this.#highlightCommand,
-          message: "➜",
-        })) as { command: string };
-
-        if (!response || !response.command) {
-          continue;
-        }
-
-        if (response.command === "exit") {
-          break;
-        }
-
-        try {
-          await this.handleCommand(response.command.split(" "));
-        } catch (error) {
-          console.log(error);
-          continue;
-        }
+        await this.listenForCommand();
       } catch (error) {
+        console.error(error);
         try {
           console.log(
             `(To exit, press ${this.#format.format("Ctrl+C", FormatType.DEBUG)} again)`,
           );
-          await enquirer.prompt({
-            type: "input",
-            name: "command",
-            validate: this.#validateCommand,
-            format: this.#highlightCommand,
-            message: "➜",
-          });
+          await this.listenForCommand();
         } catch (error) {
           break;
         }

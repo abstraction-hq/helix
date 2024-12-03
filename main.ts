@@ -24,8 +24,8 @@ async function main() {
   const token = new TokenEngine(storage);
   const utxo = new UTXOEngine(storage);
 
-  const cli = new HelixCLI(format, keyring, chain, token, utxo);
-  cli.start()
+  const cli = new HelixCLI(format, keyring, chain, token, utxo, crypto);
+  cli.start();
 }
 
-main();
+main()
