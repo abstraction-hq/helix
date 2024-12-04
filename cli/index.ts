@@ -1,6 +1,15 @@
 #!/usr/bin/env node
 import enquirer from "enquirer";
-import { Address, Hex, parseUnits, zeroAddress } from "viem";
+import {
+  Address,
+  concat,
+  fromHex,
+  hashMessage,
+  Hex,
+  parseUnits,
+  toHex,
+  zeroAddress,
+} from "viem";
 import { FormatEngine, FormatType } from "../format/index.js";
 import { KeyringEngine } from "../keyring/index.js";
 import { ChainEngine } from "../chain/index.js";
@@ -172,17 +181,32 @@ export class HelixCLI {
       inputAmounts: ["0", "0"],
       inputSecrets: ["0", "0"],
       outputAmounts: [inAmountParsed.toString(), "0"],
-      outputSecrets: [Math.floor(Math.random() * 1000000), "0"],
+      outputSecrets: [Math.floor(Math.random() * 1e18), "0"],
     };
 
-    const message = this.#crypto.encryptSymmetric(
-      this.#keyring.getEncryptionPublicKey(),
-      (proveParameters.outputSecrets[0] as number).toString(),
+    console.log(proveParameters);
+
+    const message = JSON.stringify(
+      this.#crypto.encryptSymmetric(
+        this.#keyring.getEncryptionPublicKey(),
+        proveParameters.outputAmounts[0] + "/" + (proveParameters.outputSecrets[0] as number).toString(),
+      ),
     );
 
     console.log("Message:", message);
+    const hexMessage = toHex(message);
+    console.log("Hex message", hexMessage);
+    console.log("Message", fromHex(hexMessage, "string"));
 
-    /*
+    const postMessage = JSON.parse(fromHex(hexMessage, "string"));
+
+    const decryptMessage = this.#crypto.decryptSymmetric(
+      postMessage,
+      this.#keyring.getEncryptionPrivateKey(),
+    );
+
+    console.log("Decrypt Message", decryptMessage);
+
     let [proof, publicSignals] =
       await this.#crypto.calucateZkProof(proveParameters);
 
@@ -195,11 +219,10 @@ export class HelixCLI {
       zeroAddress,
       proof,
       publicSignals,
-      "0x",
+      toHex(JSON.stringify(message)),
     );
 
     console.log(transaction);
-    */
   };
 
   privateSend: CommandHandler = async () => {
@@ -221,7 +244,10 @@ export class HelixCLI {
     );
     console.log(
       "Encryption Key:",
-      this.#format.format(this.#keyring.getEncryptionPublicKey(), FormatType.SUCCESS),
+      this.#format.format(
+        this.#keyring.getEncryptionPublicKey(),
+        FormatType.SUCCESS,
+      ),
     );
   };
 
@@ -251,7 +277,6 @@ export class HelixCLI {
           : true;
       },
     });
-
     const privateKey: Hex = this.#keyring.generateNewPrivateKey();
     console.log(
       this.#format.format("New Privatekey Generated:", FormatType.SUCCESS),
@@ -274,7 +299,44 @@ export class HelixCLI {
       return;
     }
 
-    await this.#keyring.savePrivateKey(privateKey, enterPassword.enterPassword);
+    console.log("Creating wallet...");
+    const hashPassword = hashMessage(enterPassword.enterPassword);
+    const nonce: Hex = toHex(Math.floor(Math.random() * 1000000));
+    const encryptionPrivateKey = hashMessage(
+      concat([hashPassword, nonce]),
+    ).slice(2);
+    const encryptionPublicKey =
+      this.#crypto.getEncryptionPublicKey(encryptionPrivateKey);
+
+    const storeEncryptionKeyTransaction =
+      await this.#chain.buildStoreEncryptionKeyTransaction(
+        encryptionPublicKey,
+        nonce,
+      );
+
+    const signedTx = await this.#keyring.signTransactionWithPrivateKey(
+      storeEncryptionKeyTransaction,
+      privateKey,
+    );
+
+    const txHash =
+      await this.#chain.sendStoreEncryptionKeyTransaction(signedTx);
+
+    const receipt =
+      await this.#chain.waitForStoreEncryptionKeyTransactionReceipt(txHash);
+    if (receipt.status != "success") {
+      console.log(
+        this.#format.format("Failed to create wallet!", FormatType.ERROR, true),
+      );
+      throw new Error(receipt);
+    }
+
+    await this.#keyring.storeKeyring(
+      privateKey,
+      encryptionPublicKey,
+      encryptionPrivateKey,
+      enterPassword.enterPassword,
+    );
 
     console.log(
       this.#format.format(

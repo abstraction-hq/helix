@@ -36,17 +36,22 @@ export class KeyringEngine {
     return true;
   }
 
-  async savePrivateKey(privateKey: Hex, password: string): Promise<void> {
+  async storeKeyring(
+    privateKey: Hex,
+    encryptionPublicKey: string,
+    encryptionPrivateKey: string,
+    password: string,
+  ): Promise<void> {
     const account = privateKeyToAccount(privateKey);
-    const encrypted = this.#crypto.encryptAesGcm(
+    const data = this.#storage.getData();
+    data.encryptedPrivateKey = this.#crypto.encryptAesGcm(
       privateKey,
       password,
     ) as string;
-    const data = this.#storage.getData();
     data.passwordHash = hashMessage(password);
-    data.encryptedPrivateKey = encrypted;
+    data.encryptionPublicKey = encryptionPublicKey;
+    data.encryptionPrivateKey = encryptionPrivateKey;
     data.address = account.address;
-    data.encryptionKey = this.#crypto.getEncryptionPublicKey(privateKey);
 
     this.#storage.setData(data);
     await this.#storage.save();
@@ -57,9 +62,19 @@ export class KeyringEngine {
     return data.address;
   }
 
-  getEncryptionPublicKey(): Hex {
+  getAddressFromPrivateKey(privateKey: Hex): Address {
+    const account = privateKeyToAccount(privateKey);
+    return account.address;
+  }
+
+  getEncryptionPublicKey(): string {
     const data = this.#storage.getData();
-    return data.encryptionKey;
+    return data.encryptionPublicKey;
+  }
+
+  getEncryptionPrivateKey(): string {
+    const data = this.#storage.getData();
+    return data.encryptionPrivateKey;
   }
 
   async isUnlock(): Promise<boolean> {
@@ -84,7 +99,17 @@ export class KeyringEngine {
     ) as string;
     const account = privateKeyToAccount(privateKey as Hex);
 
-    const signature = await account.signTransaction(transaction);
-    return signature;
+    const signedTx = await account.signTransaction(transaction);
+    return signedTx;
+  }
+
+  async signTransactionWithPrivateKey(
+    transaction: Transaction,
+    privateKey: string,
+  ): Promise<string> {
+    const account = privateKeyToAccount(privateKey as Hex);
+
+    const signedTx = await account.signTransaction(transaction);
+    return signedTx;
   }
 }

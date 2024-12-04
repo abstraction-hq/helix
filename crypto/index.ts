@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import crypto, { CipherGCM, CipherGCMTypes, DecipherGCM } from "crypto";
 import { plonk } from "snarkjs";
+// TODO: wait for the next release of snarkjs to fix this
+import * as snarkjs from "snarkjs";
 import { base64, utf8 } from "@scure/base";
 import nacl from "tweetnacl";
 
@@ -233,6 +235,7 @@ export class CryptoEngine {
   };
 
   calucateZkProof = async (proveParameters: any): Promise<[any, any]> => {
+    let curve = await (snarkjs as any).curves.getCurveFromName("bn128");
     let { proof, publicSignals } = await plonk.fullProve(
       proveParameters,
       "circuits/transfer2.wasm",
@@ -243,6 +246,7 @@ export class CryptoEngine {
       proof,
       publicSignals,
     );
+
     const matches = proofCalldata.match(/\[.*?\]/g);
 
     if (matches && matches.length === 2) {
@@ -251,6 +255,7 @@ export class CryptoEngine {
       publicSignals = JSON.parse(matches[1] as string);
     }
 
+    await curve.terminate();
     return [proof, publicSignals];
   };
 }
