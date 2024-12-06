@@ -55,6 +55,21 @@ export class KeyringEngine {
 
     this.#storage.setData(data);
     await this.#storage.save();
+
+    // automatically unlock
+    this.#password = password;
+  }
+
+  async removeKeyring(): Promise<void> {
+    const data = this.#storage.getData();
+    data.encryptedPrivateKey = undefined;
+    data.passwordHash = undefined;
+    data.encryptionPublicKey = undefined;
+    data.encryptionPrivateKey = undefined;
+    data.address = undefined;
+    this.#storage.setData(data);
+    await this.#storage.save();
+    this.#password = undefined;
   }
 
   getAddress(): Address {
@@ -77,36 +92,21 @@ export class KeyringEngine {
     return data.encryptionPrivateKey;
   }
 
-  async isUnlock(): Promise<boolean> {
+  isUnlocked(): boolean {
     return this.#password !== undefined;
-  }
-
-  async encryptMessage(message: string, publicKey: Hex) {
-    if (!this.#password) {
-      throw new Error("Must unlock keyring first");
-    }
-    const data = this.#storage.getData();
   }
 
   async signTransaction(
     transaction: Transaction,
-    password: string,
-  ): Promise<string> {
+  ): Promise<Hex> {
+    if (!this.isUnlocked()) {
+      throw new Error("Keyring is locked");
+    }
     const data = this.#storage.getData();
     const privateKey = this.#crypto.decryptAesGcm(
       data.encryptedPrivateKey,
-      password,
+      this.#password as string,
     ) as string;
-    const account = privateKeyToAccount(privateKey as Hex);
-
-    const signedTx = await account.signTransaction(transaction);
-    return signedTx;
-  }
-
-  async signTransactionWithPrivateKey(
-    transaction: Transaction,
-    privateKey: string,
-  ): Promise<string> {
     const account = privateKeyToAccount(privateKey as Hex);
 
     const signedTx = await account.signTransaction(transaction);

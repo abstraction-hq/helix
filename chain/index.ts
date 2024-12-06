@@ -8,6 +8,8 @@ import {
   Hex,
   encodeFunctionData,
   zeroAddress,
+  Transaction,
+  decodeFunctionData,
 } from "viem";
 import { StorageEngine } from "../storage/index.js";
 import * as chains from "./chains.js";
@@ -15,7 +17,7 @@ import MagicpayAbi from "./MagicPay.abi.json" assert { type: "json" };
 import OnchainProfileAbi from "./OnchainProfile.abi.json" assert { type: "json" };
 
 export const magicPayAddress: Address =
-  "0x09aa0fbf1670826b4a3c193ef729d673e9a75ebd";
+  "0x7e33db170e8b1FF05599064405fdF1F06b7d7D75";
 
 export const onchainProfileContractAddress: Address =
   "0x9A62aedb42A10c4E105198C889B348e297886501";
@@ -38,6 +40,21 @@ export class ChainEngine {
       chain: chains.dataLayer,
       transport: http(),
     }) as PublicClient;
+  }
+
+  buildScanLinkTransaction(hash: Hex): string {
+    return this.#client.chain?.blockExplorers?.default.url + "/tx/" + hash;
+  }
+
+  async getTransaction(hash: Hex): Promise<any> {
+    return await this.#client.getTransaction({ hash });
+  }
+
+  decodePay2Transaction(data: Hex): any {
+    return decodeFunctionData({
+      abi: MagicpayAbi,
+      data,
+    }).args;
   }
 
   async buildStoreEncryptionKeyTransaction(
@@ -64,21 +81,17 @@ export class ChainEngine {
   }
 
   async sendStoreEncryptionKeyTransaction(
-    serializedTransaction: any,
-  ): Promise<Hex> {
-    const txHash = await this.#dataLayer.sendRawTransaction({
+    serializedTransaction: Hex,
+  ): Promise<boolean> {
+    const hash = await this.#dataLayer.sendRawTransaction({
       serializedTransaction,
     });
 
-    return txHash;
-  }
-
-  async waitForStoreEncryptionKeyTransactionReceipt(hash: Hex): Promise<any> {
     const receipt = await this.#dataLayer.waitForTransactionReceipt({ hash });
-    return receipt;
+    return receipt.status == "success";
   }
 
-  async sendTransaction(serializedTransaction: any): Promise<Hex> {
+  async sendTransaction(serializedTransaction: Hex): Promise<Hex> {
     const txHash = await this.#client.sendRawTransaction({
       serializedTransaction,
     });
@@ -100,17 +113,19 @@ export class ChainEngine {
     outReceiver: Address,
     proof: any,
     publicSignals: any,
-    message: Hex,
-  ): Promise<unknown> {
+    messages: Hex[],
+  ): Promise<Transaction> {
     const inputs = [publicSignals[0], publicSignals[1]] as readonly Hex[];
     const outputs = [
       {
         owner: receiver,
         encryptedAmount: publicSignals[2] as Hex,
+        message: messages[0],
       },
       {
         owner: walletAddress,
         encryptedAmount: publicSignals[3] as Hex,
+        message: messages[1]
       },
     ] as any;
 
@@ -124,24 +139,25 @@ export class ChainEngine {
       // TODO: calulate fee
     }
 
-    const transaction = {
-      to: magicPayAddress,
-      data: encodeFunctionData({
-        abi: MagicpayAbi,
-        functionName: "pay2",
-        args: [
-          tokenAddress,
-          inputs,
-          outputs,
-          inAmount,
-          outAmount,
-          outReceiver,
-          proof,
-          message,
-        ],
-      }),
-      value,
-    };
+    const transaction: Transaction =
+      (await this.#client.prepareTransactionRequest({
+        account: walletAddress,
+        to: magicPayAddress,
+        data: encodeFunctionData({
+          abi: MagicpayAbi,
+          functionName: "pay2",
+          args: [
+            tokenAddress,
+            inputs,
+            outputs,
+            inAmount,
+            outAmount,
+            outReceiver,
+            proof,
+          ],
+        }),
+        value,
+      } as any)) as Transaction;
 
     return transaction;
   }
