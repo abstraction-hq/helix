@@ -1,26 +1,26 @@
 #!/usr/bin/env node
-import { english, generateMnemonic, mnemonicToAccount } from "viem/accounts";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { StorageEngine } from "../storage/index.js";
 import { CryptoEngine } from "../crypto/index.js";
-import { mnemonicToEntropy, entropyToMnemonic, validateMnemonic } from "bip39";
-import { Address, hashMessage, Transaction } from "viem";
+import { Address, hashMessage, Hex, Transaction } from "viem";
 
 export class KeyringEngine {
   #storage: StorageEngine;
   #crypto: CryptoEngine;
+  #password: string | undefined;
 
   constructor(storage: StorageEngine, crypto: CryptoEngine) {
     this.#storage = storage;
     this.#crypto = crypto;
   }
 
-  generateNewSeeds(): string {
-    return generateMnemonic(english);
+  generateNewPrivateKey(): Hex {
+    return generatePrivateKey();
   }
 
-  isExitSeed(): boolean {
+  isExitedKeypair(): boolean {
     const data = this.#storage.getData();
-    return data.encryptedSeed !== undefined;
+    return data.encryptedPrivateKey !== undefined;
   }
 
   isValidatePassword(password: string): boolean {
@@ -28,104 +28,88 @@ export class KeyringEngine {
     return data.passwordHash === hashMessage(password);
   }
 
-  isValidMnemonic(mnemonic: string): boolean {
-    return validateMnemonic(mnemonic);
+  unlock(password: string): boolean {
+    if (!this.isValidatePassword(password)) {
+      return false;
+    }
+    this.#password = password;
+    return true;
   }
 
-  async persistSeed(mnemonic: string, password: string): Promise<void> {
-    const account = mnemonicToAccount(mnemonic);
-    const encrypted = this.#crypto.encryptAesGcm(
-      mnemonicToEntropy(mnemonic),
+  async storeKeyring(
+    privateKey: Hex,
+    encryptionPublicKey: string,
+    encryptionPrivateKey: string,
+    password: string,
+  ): Promise<void> {
+    const account = privateKeyToAccount(privateKey);
+    const data = this.#storage.getData();
+    data.encryptedPrivateKey = this.#crypto.encryptAesGcm(
+      privateKey,
       password,
     ) as string;
-    const data = this.#storage.getData();
-    data["passwordHash"] = hashMessage(password);
-    data["encryptedSeed"] = encrypted;
-    // TODO: prepare for multichain
-    data["addresses"] = {
-      evm: [account.address],
-    };
-    data["defaultAddress"] = {
-      evm: account.address,
-    };
-
-    this.#storage.setData(data);
-    await this.#storage.save();
-  }
-
-  async addAddress(password: string): Promise<string> {
-    const data = this.#storage.getData();
-    const mnemonic = entropyToMnemonic(
-      this.#crypto.decryptAesGcm(data.encryptedSeed, password) as string,
-    );
-    const totalAccount = Object.keys(data.addresses.evm).length;
-    const newAccount = mnemonicToAccount(mnemonic, {
-      addressIndex: totalAccount,
-    });
-
-    data.addresses.evm.push(newAccount.address);
-    data.defaultAddress.evm = newAccount.address;
+    data.passwordHash = hashMessage(password);
+    data.encryptionPublicKey = encryptionPublicKey;
+    data.encryptionPrivateKey = encryptionPrivateKey;
+    data.address = account.address;
 
     this.#storage.setData(data);
     await this.#storage.save();
 
-    return newAccount.address;
+    // automatically unlock
+    this.#password = password;
   }
 
-  getActiveAddress(): Address {
+  async removeKeyring(): Promise<void> {
     const data = this.#storage.getData();
-    return data.defaultAddress.evm as Address;
-  }
-
-  getAddresses(): string[] {
-    const data = this.#storage.getData();
-    return data.addresses.evm;
-  }
-
-  async setActiveAddress(address: string): Promise<void> {
-    const data = this.#storage.getData();
-    data.defaultAddress.evm = address;
+    data.encryptedPrivateKey = undefined;
+    data.passwordHash = undefined;
+    data.encryptionPublicKey = undefined;
+    data.encryptionPrivateKey = undefined;
+    data.address = undefined;
     this.#storage.setData(data);
     await this.#storage.save();
+    this.#password = undefined;
   }
 
-  async isUnlock(): Promise<boolean> {
-    return false;
-  }
-
-  async signMessage(
-    index: number,
-    message: string,
-    password: string,
-  ): Promise<string> {
+  getAddress(): Address {
     const data = this.#storage.getData();
-    const mnemonic = entropyToMnemonic(
-      this.#crypto.decryptAesGcm(data.encryptedSeed, password) as string,
-    );
-    const account = mnemonicToAccount(mnemonic, {
-      addressIndex: index,
-    });
+    return data.address;
+  }
 
-    const signature = await account.signMessage({
-      message,
-    });
-    return signature;
+  getAddressFromPrivateKey(privateKey: Hex): Address {
+    const account = privateKeyToAccount(privateKey);
+    return account.address;
+  }
+
+  getEncryptionPublicKey(): string {
+    const data = this.#storage.getData();
+    return data.encryptionPublicKey;
+  }
+
+  getEncryptionPrivateKey(): string {
+    const data = this.#storage.getData();
+    return data.encryptionPrivateKey;
+  }
+
+  isUnlocked(): boolean {
+    return this.#password !== undefined;
   }
 
   async signTransaction(
-    index: number,
     transaction: Transaction,
-    password: string,
-  ): Promise<string> {
+  ): Promise<Hex> {
+    if (!this.isUnlocked()) {
+      throw new Error("Keyring is locked");
+    }
     const data = this.#storage.getData();
-    const mnemonic = entropyToMnemonic(
-      this.#crypto.decryptAesGcm(data.encryptedSeed, password) as string,
-    );
-    const account = mnemonicToAccount(mnemonic, {
-      addressIndex: index,
-    });
+    const privateKey = this.#crypto.decryptAesGcm(
+      data.encryptedPrivateKey,
+      this.#password as string,
+    ) as string;
+    const account = privateKeyToAccount(privateKey as Hex);
 
-    const signature = await account.signTransaction(transaction);
-    return signature;
+    const signedTx = await account.signTransaction(transaction);
+    return signedTx;
   }
 }

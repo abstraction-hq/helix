@@ -5,13 +5,14 @@ import { KeyringEngine } from "./keyring/index.js";
 import { CryptoEngine } from "./crypto/index.js";
 import { ChainEngine } from "./chain/index.js";
 import { TokenEngine } from "./token/index.js";
+import { TransactionEngine } from "./transaction/index.js";
 
 import { HelixCLI } from "./cli/index.js";
 
-import updateNotifier from 'update-notifier';
-import packageJson from './package.json' assert {type: 'json'};
+import updateNotifier from "update-notifier";
+import packageJson from "./package.json" assert { type: "json" };
 
-updateNotifier({pkg: packageJson}).notify();
+updateNotifier({ pkg: packageJson }).notify();
 
 async function main() {
   // init engines
@@ -21,10 +22,10 @@ async function main() {
   const keyring = new KeyringEngine(storage, crypto);
   const chain = new ChainEngine(storage);
   const token = new TokenEngine(storage);
+  const transaction = new TransactionEngine(storage);
 
-  const cli = new HelixCLI(format, keyring, chain, token);
-
+  const cli = new HelixCLI(format, keyring, chain, token, transaction, crypto);
   cli.start();
 }
 
-main();
+main()

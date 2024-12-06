@@ -25,6 +25,7 @@
   ],
   "devDependencies": {
     "@types/module-alias": "^2.0.4",
+    "@types/snarkjs": "^0.7.8",
     "@types/update-notifier": "^6.0.8",
     "cz-conventional-changelog": "^3.3.0",
     "semantic-release": "^24.2.0",
@@ -38,12 +39,17 @@
     "helix": "dist/main.js"
   },
   "dependencies": {
+    "@scure/base": "^1.2.1",
+    "@types/elliptic": "^6.4.18",
     "axios": "^1.7.7",
     "bip39": "^3.1.0",
     "chalk": "^4.1.2",
     "commander": "^12.1.0",
-    "inquirer": "^12.1.0",
+    "elliptic": "^6.6.1",
+    "enquirer": "^2.4.1",
     "module-alias": "^2.2.3",
+    "snarkjs": "^0.7.5",
+    "tweetnacl": "^1.0.3",
     "update-notifier": "^7.3.1",
     "viem": "^2.21.48"
   },
