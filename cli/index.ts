@@ -17,6 +17,7 @@ import { ChainEngine } from "../chain/index.js";
 import { TokenEngine } from "../token/index.js";
 import { TransactionEngine } from "../transaction/index.js";
 import { CryptoEngine } from "../crypto/index.js";
+import { WELCOME_MESSAGE } from "../constants/index.js";
 
 type CommandHandler = (args: string[]) => Promise<void>;
 
@@ -378,6 +379,15 @@ export class HelixCLI {
     }
 
     console.log("Creating wallet...");
+    await this.#keyring.storeKeyring(
+      privateKey,
+      enterPassword.enterPassword,
+    );
+
+    console.log("Create view key...");
+    const viewKeyPreimage = await this.#keyring.signPersonalMessage(WELCOME_MESSAGE)
+    console.log("View Key Preimage:", viewKeyPreimage);
+    return;
     const hashPassword = hashMessage(enterPassword.enterPassword);
     const nonce: Hex = toHex(Math.floor(Math.random() * 1000000));
     const encryptionPrivateKey = hashMessage(
@@ -388,8 +398,6 @@ export class HelixCLI {
 
     await this.#keyring.storeKeyring(
       privateKey,
-      encryptionPublicKey,
-      encryptionPrivateKey,
       enterPassword.enterPassword,
     );
 

@@ -38,8 +38,6 @@ export class KeyringEngine {
 
   async storeKeyring(
     privateKey: Hex,
-    encryptionPublicKey: string,
-    encryptionPrivateKey: string,
     password: string,
   ): Promise<void> {
     const account = privateKeyToAccount(privateKey);
@@ -49,8 +47,6 @@ export class KeyringEngine {
       password,
     ) as string;
     data.passwordHash = hashMessage(password);
-    data.encryptionPublicKey = encryptionPublicKey;
-    data.encryptionPrivateKey = encryptionPrivateKey;
     data.address = account.address;
 
     this.#storage.setData(data);
@@ -96,9 +92,21 @@ export class KeyringEngine {
     return this.#password !== undefined;
   }
 
-  async signTransaction(
-    transaction: Transaction,
-  ): Promise<Hex> {
+  async signPersonalMessage(message: string): Promise<Hex> {
+    if (!this.isUnlocked()) {
+      throw new Error("Keyring is locked");
+    }
+    const data = this.#storage.getData();
+    const privateKey = this.#crypto.decryptAesGcm(
+      data.encryptedPrivateKey,
+      this.#password as string,
+    ) as string;
+    const account = privateKeyToAccount(privateKey as Hex);
+    const signedMessage = await account.signMessage({ message });
+    return signedMessage;
+  }
+
+  async signTransaction(transaction: Transaction): Promise<Hex> {
     if (!this.isUnlocked()) {
       throw new Error("Keyring is locked");
     }
