@@ -17,6 +17,7 @@ import { ChainEngine } from "../chain/index.js";
 import { TokenEngine } from "../token/index.js";
 import { TransactionEngine } from "../transaction/index.js";
 import { CryptoEngine } from "../crypto/index.js";
+import { WELCOME_MESSAGE } from "../constants/index.js";
 
 type CommandHandler = (args: string[]) => Promise<void>;
 
@@ -378,25 +379,18 @@ export class HelixCLI {
     }
 
     console.log("Creating wallet...");
-    const hashPassword = hashMessage(enterPassword.enterPassword);
-    const nonce: Hex = toHex(Math.floor(Math.random() * 1000000));
-    const encryptionPrivateKey = hashMessage(
-      concat([hashPassword, nonce]),
-    ).slice(2);
+    await this.#keyring.storeKeyring(privateKey, enterPassword.enterPassword);
+
+    console.log("Create encryption key...");
+    const encryptionKeyPreimage =
+      await this.#keyring.signPersonalMessage(WELCOME_MESSAGE);
+    const encryptionPrivateKey = hashMessage(encryptionKeyPreimage).slice(2); // remove 0x
     const encryptionPublicKey =
       this.#crypto.getEncryptionPublicKey(encryptionPrivateKey);
-
-    await this.#keyring.storeKeyring(
-      privateKey,
-      encryptionPublicKey,
-      encryptionPrivateKey,
-      enterPassword.enterPassword,
-    );
-
     const storeEncryptionKeyTransaction =
       await this.#chain.buildStoreEncryptionKeyTransaction(
         encryptionPublicKey,
-        nonce,
+        "0x0",
       );
 
     const signedTx = await this.#keyring.signTransaction(
@@ -405,11 +399,19 @@ export class HelixCLI {
 
     if (!(await this.#chain.sendStoreEncryptionKeyTransaction(signedTx))) {
       console.log(
-        this.#format.format("Failed to create wallet!", FormatType.ERROR, true),
+        this.#format.format(
+          "Failed to store encryption key on-chain!",
+          FormatType.ERROR,
+          true,
+        ),
       );
-      await this.#keyring.removeKeyring();
       return;
     }
+
+    await this.#keyring.storeEncryptionKey(
+      encryptionPrivateKey,
+      encryptionPublicKey,
+    );
 
     console.log(
       this.#format.format(
