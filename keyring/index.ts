@@ -56,16 +56,16 @@ export class KeyringEngine {
     this.#password = password;
   }
 
-  async removeKeyring(): Promise<void> {
+  async storeEncryptionKey(
+    encryptionPrivateKey: string,
+    encryptionPublicKey: string,
+  ): Promise<void> {
     const data = this.#storage.getData();
-    data.encryptedPrivateKey = undefined;
-    data.passwordHash = undefined;
-    data.encryptionPublicKey = undefined;
-    data.encryptionPrivateKey = undefined;
-    data.address = undefined;
+    data.encryptionPrivateKey = encryptionPrivateKey;
+    data.encryptionPublicKey = encryptionPublicKey;
+
     this.#storage.setData(data);
     await this.#storage.save();
-    this.#password = undefined;
   }
 
   getAddress(): Address {

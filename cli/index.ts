@@ -379,32 +379,18 @@ export class HelixCLI {
     }
 
     console.log("Creating wallet...");
-    await this.#keyring.storeKeyring(
-      privateKey,
-      enterPassword.enterPassword,
-    );
+    await this.#keyring.storeKeyring(privateKey, enterPassword.enterPassword);
 
-    console.log("Create view key...");
-    const viewKeyPreimage = await this.#keyring.signPersonalMessage(WELCOME_MESSAGE)
-    console.log("View Key Preimage:", viewKeyPreimage);
-    return;
-    const hashPassword = hashMessage(enterPassword.enterPassword);
-    const nonce: Hex = toHex(Math.floor(Math.random() * 1000000));
-    const encryptionPrivateKey = hashMessage(
-      concat([hashPassword, nonce]),
-    ).slice(2);
+    console.log("Create encryption key...");
+    const encryptionKeyPreimage =
+      await this.#keyring.signPersonalMessage(WELCOME_MESSAGE);
+    const encryptionPrivateKey = hashMessage(encryptionKeyPreimage).slice(2); // remove 0x
     const encryptionPublicKey =
       this.#crypto.getEncryptionPublicKey(encryptionPrivateKey);
-
-    await this.#keyring.storeKeyring(
-      privateKey,
-      enterPassword.enterPassword,
-    );
-
     const storeEncryptionKeyTransaction =
       await this.#chain.buildStoreEncryptionKeyTransaction(
         encryptionPublicKey,
-        nonce,
+        "0x0",
       );
 
     const signedTx = await this.#keyring.signTransaction(
@@ -413,11 +399,19 @@ export class HelixCLI {
 
     if (!(await this.#chain.sendStoreEncryptionKeyTransaction(signedTx))) {
       console.log(
-        this.#format.format("Failed to create wallet!", FormatType.ERROR, true),
+        this.#format.format(
+          "Failed to store encryption key on-chain!",
+          FormatType.ERROR,
+          true,
+        ),
       );
-      await this.#keyring.removeKeyring();
       return;
     }
+
+    await this.#keyring.storeEncryptionKey(
+      encryptionPrivateKey,
+      encryptionPublicKey,
+    );
 
     console.log(
       this.#format.format(
