@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/helixpay-xyz/helix/compare/v1.6.0...v1.7.0) (2024-12-09)
+
+
+### Features
+
+* re-publish ([6940715](https://github.com/helixpay-xyz/helix/commit/69407156d17963ae17200783bcff7689b7ebfaef))
+
 # [1.6.0](https://github.com/helixpay-xyz/helix/compare/v1.5.0...v1.6.0) (2024-12-09)
 
 
