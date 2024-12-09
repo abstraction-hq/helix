@@ -1,3 +1,11 @@
+# [1.8.0](https://github.com/helixpay-xyz/helix/compare/v1.7.0...v1.8.0) (2024-12-09)
+
+
+### Features
+
+* **cli:** generate encryption key from user'signature ([1e4dff0](https://github.com/helixpay-xyz/helix/commit/1e4dff058ce6ebf753a2b695f6b19cac63ae05c6))
+* **constants, keyring:** define sign message, add sign personal message function ([ed49c48](https://github.com/helixpay-xyz/helix/commit/ed49c48157c2526870b09a1ed2ffd5d656ebfa26))
+
 # [1.7.0](https://github.com/helixpay-xyz/helix/compare/v1.6.0...v1.7.0) (2024-12-09)
 
 
